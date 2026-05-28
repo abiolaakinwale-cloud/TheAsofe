@@ -1,0 +1,119 @@
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { getBrand, getBrands, getProductsByBrand } from "@/lib/queries";
+import ProductCard from "@/components/ProductCard";
+
+export async function generateStaticParams() {
+  const brands = await getBrands();
+  return brands.map(b => ({ slug: b.slug }));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const b = await getBrand(slug);
+  if (!b) return {};
+  return { title: b.name, description: b.tagline };
+}
+
+const brandGround: Record<string, string> = {
+  "atelier-adunni":   "var(--color-oxblood)",     // Lagos — indigo & gold register
+  "maison-diop":      "var(--color-cobalt)",      // Dakar — indigo / bazin register
+  "kente-co":         "var(--color-emerald)",     // Bonwire — kente green/gold register
+  "studio-wangari":   "var(--color-ink)",         // Nairobi — minimal/contemplative
+  "talla":            "var(--color-terracotta)",  // Marrakech — earth / clay
+  "house-of-ndlovu":  "var(--color-sage)",        // Karoo — pastoral / wool register
+  "atelier-tessema":  "var(--color-saffron)",     // Addis — saffron / cotton register
+  "bogolan-studio":   "var(--color-blush)",       // Bamako — mud cloth on cream
+};
+
+export default async function BrandPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const [brand, items, brands] = await Promise.all([
+    getBrand(slug),
+    getProductsByBrand(slug),
+    getBrands(),
+  ]);
+  if (!brand) notFound();
+  const ground = brandGround[slug] ?? "var(--color-cream)";
+  const isDark = ground !== "var(--color-blush)" && ground !== "var(--color-saffron)" && ground !== "var(--color-sage)" && ground !== "var(--color-cream)";
+  const ink = isDark ? "var(--color-ground)" : "var(--color-ink)";
+  const eyebrowColour = isDark ? "var(--color-saffron-soft)" : "var(--color-oxblood)";
+
+  return (
+    <>
+      {/* ─── Atelier portrait ────────────────────────────────────── */}
+      <section style={{ backgroundColor: ground, color: ink }}>
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 grid lg:grid-cols-2 gap-12 lg:gap-20 min-h-[70vh] items-stretch">
+          <div className="flex flex-col justify-center py-20 lg:py-24">
+            <p className="eyebrow mb-6" style={{ color: eyebrowColour }}>
+              {brand.origin} · Established {brand.founded}
+            </p>
+            <h1 className="display text-[clamp(2.6rem,6vw,5.6rem)] mb-8">
+              {brand.name}.
+            </h1>
+            <p className="serif text-xl lg:text-2xl mb-8 max-w-md italic" style={{ color: isDark ? "rgba(255,255,255,0.85)" : "var(--color-ink-soft)" }}>
+              {brand.tagline}
+            </p>
+            <p className="text-base lg:text-lg leading-relaxed max-w-lg" style={{ color: isDark ? "rgba(255,255,255,0.75)" : "var(--color-ink-soft)" }}>
+              {brand.story}
+            </p>
+          </div>
+          <div className="relative min-h-[60vh] lg:min-h-0">
+            <Image
+              src={brand.heroImage}
+              alt={brand.name}
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ─── House products ──────────────────────────────────────── */}
+      <section className="py-20 lg:py-28">
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
+          <div className="flex items-end justify-between mb-12">
+            <div>
+              <span className="rule mb-6" />
+              <p className="eyebrow mb-3" style={{ color: "var(--color-emerald)" }}>The Collection</p>
+              <h2 className="display text-3xl lg:text-5xl">
+                {items.length} {items.length === 1 ? "piece" : "pieces"} in the house.
+              </h2>
+            </div>
+          </div>
+
+          {items.length === 0 ? (
+            <p className="text-center py-24 text-sm" style={{ color: "var(--color-muted)" }}>
+              New work from {brand.name} arrives shortly.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 lg:gap-x-10 gap-y-14">
+              {items.map(p => <ProductCard key={p.slug} product={p} brand={brand} />)}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ─── Other designers ───────────────────────────────────────── */}
+      <section className="py-16 lg:py-20 border-t" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-cream)" }}>
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
+          <p className="eyebrow mb-3 text-center" style={{ color: "var(--color-cobalt)" }}>Continue browsing</p>
+          <h2 className="display text-2xl lg:text-3xl text-center mb-10">Other designers.</h2>
+          <ul className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
+            {brands.filter(b => b.slug !== brand.slug).map(b => (
+              <li key={b.slug}>
+                <Link href={`/brands/${b.slug}`} className="lux-link">
+                  <span className="serif text-xl lg:text-2xl" style={{ color: "var(--color-ink)" }}>{b.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    </>
+  );
+}
