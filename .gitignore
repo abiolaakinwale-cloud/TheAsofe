@@ -42,8 +42,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Large source assets — keep the originals out of git history
-"asofe images"/asofe_images.zip
+# Large source assets — keep zip archives out of git history
+# (the PNGs themselves are kept in asofe images/ as the canonical source set
+# and copied with kebab-case names into public/asofe/)
+*.zip
 
 # typescript
 *.tsbuildinfo
