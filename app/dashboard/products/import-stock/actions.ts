@@ -6,8 +6,8 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import { parseCsvKeyed } from "@/lib/csv";
 
 export type StockRowResult =
-  | { row: number; slug: string; size: string; quantity: number; status: "ok" }
-  | { row: number; slug: string; size: string; status: "error"; error: string };
+  | { row: number; slug: string; colour: string; size: string; quantity: number; status: "ok" }
+  | { row: number; slug: string; colour: string; size: string; status: "error"; error: string };
 
 export type StockImportResult = {
   ok: boolean;
@@ -42,18 +42,27 @@ export async function importStock(formData: FormData): Promise<StockImportResult
   // 3. Load this seller's products (or all if admin) so we can verify slug
   //    ownership AND that the size exists on the product.
   const admin = getAdminSupabase();
-  const query = admin.from("products").select("slug, brand, sizes");
+  const query = admin.from("products").select("slug, brand, sizes, colour, colours");
   const { data: products, error: productsErr } = profile.brand
     ? await query.eq("brand", profile.brand)
     : await query;
   if (productsErr) throw productsErr;
-  const productBySlug = new Map<string, { brand: string; sizes: string[] }>(
-    (products ?? []).map(p => [p.slug, { brand: p.brand, sizes: p.sizes as string[] }])
+  type ProductInfo = { brand: string; sizes: string[]; defaultColour: string; colours: string[] };
+  const productBySlug = new Map<string, ProductInfo>(
+    (products ?? []).map(p => [
+      p.slug,
+      {
+        brand: p.brand,
+        sizes: p.sizes as string[],
+        defaultColour: (p.colour as string) ?? "",
+        colours: Array.isArray(p.colours) && p.colours.length > 0 ? (p.colours as string[]) : [],
+      },
+    ])
   );
 
   // 4. Validate rows
   const results: StockRowResult[] = [];
-  type Payload = { product_slug: string; size: string; quantity: number };
+  type Payload = { product_slug: string; colour: string; size: string; quantity: number };
   const payloads: Payload[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -63,6 +72,7 @@ export async function importStock(formData: FormData): Promise<StockImportResult
     const size = (r.size || "").trim();
     const quantityStr = (r.quantity || "").trim();
     const quantity = Number(quantityStr);
+    const colourRaw = (r.colour || "").trim();
 
     const errors: string[] = [];
     if (!slug) errors.push("Slug is required.");
@@ -72,19 +82,34 @@ export async function importStock(formData: FormData): Promise<StockImportResult
     }
 
     const product = productBySlug.get(slug);
+    let colour = colourRaw;
     if (slug && !product) {
       errors.push(profile.brand
         ? `Slug "${slug}" not found in your collection.`
         : `Slug "${slug}" not found.`);
-    } else if (product && size && !product.sizes.includes(size)) {
-      errors.push(`Size "${size}" isn't defined on "${slug}" (defined: ${product.sizes.join(", ")}).`);
+    } else if (product) {
+      if (size && !product.sizes.includes(size)) {
+        errors.push(`Size "${size}" isn't defined on "${slug}" (defined: ${product.sizes.join(", ")}).`);
+      }
+      // Variant handling: if the product has multiple colours, the CSV row
+      // must specify which one. If single-colour, default to the existing
+      // value (or "" for legacy).
+      if (product.colours.length > 0) {
+        if (!colour) {
+          errors.push(`"${slug}" has variants — provide a 'colour' column (one of: ${product.colours.join(", ")}).`);
+        } else if (!product.colours.includes(colour)) {
+          errors.push(`Colour "${colour}" isn't defined on "${slug}" (defined: ${product.colours.join(", ")}).`);
+        }
+      } else {
+        colour = product.defaultColour;
+      }
     }
 
     if (errors.length) {
-      results.push({ row: rowNum, slug, size, status: "error", error: errors.join(" ") });
+      results.push({ row: rowNum, slug, colour, size, status: "error", error: errors.join(" ") });
       continue;
     }
-    payloads.push({ product_slug: slug, size, quantity });
+    payloads.push({ product_slug: slug, colour, size, quantity });
   }
 
   // 5. Upsert valid rows one at a time so a bad row doesn't kill the batch
@@ -94,13 +119,13 @@ export async function importStock(formData: FormData): Promise<StockImportResult
       .from("stock_levels")
       .upsert(
         { ...p, updated_at: new Date().toISOString() },
-        { onConflict: "product_slug,size" }
+        { onConflict: "product_slug,colour,size" }
       );
     if (error) {
-      results.push({ row: -1, slug: p.product_slug, size: p.size, status: "error", error: error.message });
+      results.push({ row: -1, slug: p.product_slug, colour: p.colour, size: p.size, status: "error", error: error.message });
     } else {
       updated++;
-      results.push({ row: -1, slug: p.product_slug, size: p.size, quantity: p.quantity, status: "ok" });
+      results.push({ row: -1, slug: p.product_slug, colour: p.colour, size: p.size, quantity: p.quantity, status: "ok" });
     }
   }
 

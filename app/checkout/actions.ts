@@ -44,14 +44,13 @@ export async function startCheckout(): Promise<CheckoutError | void> {
   }
 
   const items = bag.items.map(it => {
-    // Snapshot the lead time at order time *only* if the line is genuinely
-    // backordered (product is made-to-order AND the size has no on-hand stock).
     const isBackorder = !!it.product.madeToOrder && it.stock === 0;
     return {
       order_id: order.id,
       product_slug: it.slug,
       brand_slug: it.product.brand,
       name: it.product.name,
+      colour: it.colour || null,
       size: it.size,
       qty: it.qty,
       unit_price: it.product.price,
@@ -83,7 +82,7 @@ export async function startCheckout(): Promise<CheckoutError | void> {
           unit_amount: toMinor(it.product.price),
           product_data: {
             name: it.product.name,
-            description: [it.brand?.name, `Size ${it.size}`].filter(Boolean).join(" · "),
+            description: [it.brand?.name, it.colour, `Size ${it.size}`].filter(Boolean).join(" · "),
             images: it.product.images.slice(0, 1),
             metadata: {
               product_slug: it.slug,

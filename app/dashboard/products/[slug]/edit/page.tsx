@@ -17,12 +17,20 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
   const admin = getAdminSupabase();
   const [{ data: product }, { data: stockRows }] = await Promise.all([
     admin.from("products").select("*").eq("slug", slug).maybeSingle(),
-    admin.from("stock_levels").select("size, quantity").eq("product_slug", slug),
+    admin.from("stock_levels").select("colour, size, quantity").eq("product_slug", slug),
   ]);
   if (!product) notFound();
   if (product.brand !== profile.brand) redirect("/dashboard/products");
 
-  const stockBySize = new Map<string, number>((stockRows ?? []).map(r => [r.size, r.quantity]));
+  // Stock keyed by `${colour}|${size}` so we can render a (colour × size) matrix.
+  const stockByKey = new Map<string, number>(
+    (stockRows ?? []).map(r => [`${r.colour ?? ""}|${r.size}`, r.quantity])
+  );
+  // Variant colours: explicit list if set, otherwise the single default colour.
+  const variantColours: string[] =
+    Array.isArray(product.colours) && product.colours.length > 0
+      ? (product.colours as string[])
+      : [product.colour ?? ""];
   const categories = await getCategories();
 
   return (
@@ -55,6 +63,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
             featured: product.featured,
             made_to_order: product.made_to_order,
             lead_time_weeks: product.lead_time_weeks,
+            colours: product.colours,
           }}
         />
         <div className="pt-4 flex gap-4 flex-wrap">
@@ -75,22 +84,31 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
           These figures show what Asofe is currently holding for you. When a customer orders, the count drops automatically.
         </p>
 
-        <form action={updateStock.bind(null, slug)} className="space-y-6">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-            {(product.sizes as string[]).map(size => (
-              <label key={size} className="flex items-center justify-between gap-4 py-3 border-b" style={{ borderColor: "var(--color-rule)" }}>
-                <span className="text-sm tracking-[0.14em] uppercase" style={{ color: "var(--color-ink)" }}>{size}</span>
-                <input
-                  name={`stock__${size}`}
-                  type="number"
-                  min={0}
-                  defaultValue={stockBySize.get(size) ?? 0}
-                  className="w-20 bg-transparent border-b py-1 text-right text-sm tabular-nums outline-none focus:border-[var(--color-ink)]"
-                  style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
-                />
-              </label>
-            ))}
-          </div>
+        <form action={updateStock.bind(null, slug)} className="space-y-10">
+          {variantColours.map(colour => (
+            <div key={colour}>
+              {variantColours.length > 1 && (
+                <p className="eyebrow mb-4" style={{ color: "var(--color-oxblood)" }}>
+                  {colour || "Default"}
+                </p>
+              )}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                {(product.sizes as string[]).map(size => (
+                  <label key={`${colour}-${size}`} className="flex items-center justify-between gap-4 py-3 border-b" style={{ borderColor: "var(--color-rule)" }}>
+                    <span className="text-sm tracking-[0.14em] uppercase" style={{ color: "var(--color-ink)" }}>{size}</span>
+                    <input
+                      name={`stock__${colour}__${size}`}
+                      type="number"
+                      min={0}
+                      defaultValue={stockByKey.get(`${colour}|${size}`) ?? 0}
+                      className="w-20 bg-transparent border-b py-1 text-right text-sm tabular-nums outline-none focus:border-[var(--color-ink)]"
+                      style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
           <button type="submit" className="px-8 py-3 text-[12px] tracking-[0.22em] uppercase font-medium" style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}>
             Save stock
           </button>

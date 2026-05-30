@@ -112,6 +112,84 @@ as $$
    where product_slug = p_slug and size = p_size;
 $$;
 
+-- Phase 6: variants. Add `colour` to stock_levels and re-key the table so a
+-- single product can carry stock across multiple (colour, size) pairs.
+-- Backfill colour for existing rows from the product's default colour.
+alter table public.products
+  add column if not exists colours text[];
+
+alter table public.stock_levels
+  add column if not exists colour text;
+
+-- Backfill: copy product.colour onto any stock_levels row missing a colour
+update public.stock_levels sl
+   set colour = coalesce(p.colour, '')
+  from public.products p
+ where sl.product_slug = p.slug
+   and (sl.colour is null or sl.colour = '');
+
+alter table public.stock_levels
+  alter column colour set default '',
+  alter column colour set not null;
+
+-- Swap the PK from (product_slug, size) → (product_slug, colour, size). Done
+-- inside a DO block so the migration stays idempotent.
+do $$
+declare
+  pk_includes_colour boolean;
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conname = 'stock_levels_pkey'
+      and conrelid = 'public.stock_levels'::regclass
+  ) then
+    select bool_or(a.attname = 'colour') into pk_includes_colour
+    from pg_constraint c
+    join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+    where c.conname = 'stock_levels_pkey';
+
+    if not coalesce(pk_includes_colour, false) then
+      alter table public.stock_levels drop constraint stock_levels_pkey;
+      alter table public.stock_levels add primary key (product_slug, colour, size);
+    end if;
+  end if;
+end $$;
+
+-- Variant-aware stock RPCs. Old single-arg signature is replaced — callers
+-- pass colour through, falling back to '' for single-colour products.
+create or replace function public.decrement_stock(p_slug text, p_colour text, p_size text, p_qty int)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.stock_levels
+     set quantity = greatest(0, quantity - p_qty),
+         updated_at = now()
+   where product_slug = p_slug
+     and colour = coalesce(p_colour, '')
+     and size = p_size;
+$$;
+
+create or replace function public.increment_stock(p_slug text, p_colour text, p_size text, p_qty int)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.stock_levels
+     set quantity = quantity + p_qty,
+         updated_at = now()
+   where product_slug = p_slug
+     and colour = coalesce(p_colour, '')
+     and size = p_size;
+$$;
+
+-- Snapshot the chosen colour on the order line so historical orders stay
+-- accurate even if the product's variants change later.
+alter table public.order_items
+  add column if not exists colour text;
+
 -- Addresses can belong to a customer (auth user) or be one-off for guest orders.
 create table if not exists public.addresses (
   id          uuid primary key default gen_random_uuid(),

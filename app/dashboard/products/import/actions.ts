@@ -93,6 +93,7 @@ export async function importProducts(formData: FormData): Promise<ImportResult> 
       continue;
     }
 
+    const variantColours = splitList(r.colours, /[,;|]/);
     seenSlugs.add(slug);
     payloads.push({
       slug,
@@ -105,6 +106,7 @@ export async function importProducts(formData: FormData): Promise<ImportResult> 
       made_in: r.made_in,
       sizes,
       colour: r.colour,
+      colours: variantColours.length > 0 ? variantColours : null,
       images,
       published:     asBool(r.published),
       new_arrival:   asBool(r.new_arrival),

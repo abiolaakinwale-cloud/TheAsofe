@@ -42,7 +42,7 @@ export default async function BagPage() {
           <ul className="lg:col-span-8 space-y-px">
             {bag.items.map(it => (
               <li
-                key={`${it.slug}-${it.size}`}
+                key={`${it.slug}-${it.colour}-${it.size}`}
                 className="grid grid-cols-12 gap-4 lg:gap-6 p-6 lg:p-8 items-start"
                 style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)" }}
               >
@@ -70,7 +70,7 @@ export default async function BagPage() {
                     <dt style={{ color: "var(--color-muted)" }}>Size</dt>
                     <dd style={{ color: "var(--color-ink)" }}>{it.size}</dd>
                     <dt style={{ color: "var(--color-muted)" }}>Colour</dt>
-                    <dd style={{ color: "var(--color-ink)" }}>{it.product.colour}</dd>
+                    <dd style={{ color: "var(--color-ink)" }}>{it.colour || it.product.colour}</dd>
                     <dt style={{ color: "var(--color-muted)" }}>Stock</dt>
                     {it.product.madeToOrder && it.stock === 0 ? (
                       <dd style={{ color: "var(--color-emerald)" }}>
@@ -85,12 +85,13 @@ export default async function BagPage() {
                 </div>
 
                 <div className="col-span-8 lg:col-span-2 flex items-center gap-1 self-center" >
-                  <QtyButton slug={it.slug} size={it.size} qty={it.qty - 1} label="−" disabled={it.qty <= 0} />
+                  <QtyButton slug={it.slug} colour={it.colour} size={it.size} qty={it.qty - 1} label="−" disabled={it.qty <= 0} />
                   <span className="inline-flex items-center justify-center min-w-[2.5rem] py-2 px-2 text-sm tabular-nums border" style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}>
                     {it.qty}
                   </span>
                   <QtyButton
                     slug={it.slug}
+                    colour={it.colour}
                     size={it.size}
                     qty={it.qty + 1}
                     label="+"
@@ -102,7 +103,7 @@ export default async function BagPage() {
 
                 <div className="col-span-4 lg:col-span-2 text-right self-center">
                   <p className="tabular-nums mb-3" style={{ color: "var(--color-ink)" }}>{formatPrice(it.lineSubtotal)}</p>
-                  <form action={removeFromBag.bind(null, it.slug, it.size)}>
+                  <form action={removeFromBag.bind(null, it.slug, it.colour, it.size)}>
                     <button type="submit" className="text-[10px] tracking-[0.18em] uppercase lux-link" style={{ color: "var(--color-muted)" }}>
                       Remove
                     </button>
@@ -142,8 +143,8 @@ function Row({ k, v, bold, muted }: { k: string; v: string; bold?: boolean; mute
   );
 }
 
-function QtyButton({ slug, size, qty, label, disabled }: { slug: string; size: string; qty: number; label: string; disabled?: boolean }) {
-  const action = updateBagQty.bind(null, slug, size, qty);
+function QtyButton({ slug, colour, size, qty, label, disabled }: { slug: string; colour: string; size: string; qty: number; label: string; disabled?: boolean }) {
+  const action = updateBagQty.bind(null, slug, colour, size, qty);
   return (
     <form action={action}>
       <button

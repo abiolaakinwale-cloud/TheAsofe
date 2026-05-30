@@ -8,6 +8,7 @@ type Defaults = {
   subcategory?: string | null;
   price?: number;
   colour?: string;
+  colours?: string[] | null;
   made_in?: string;
   sizes?: string[];
   composition?: string[];
@@ -46,7 +47,13 @@ export default function ProductFields({
       <Field name="subcategory" label="Subcategory (optional)" defaultValue={d?.subcategory ?? ""} placeholder="outerwear" />
 
       <Field name="price" label="Price (GBP, integer)" defaultValue={d?.price?.toString()} placeholder="2480" inputMode="numeric" />
-      <Field name="colour" label="Colour" defaultValue={d?.colour} />
+      <Field name="colour" label="Default colour" defaultValue={d?.colour} />
+      <Field
+        name="colours"
+        label="Variant colours (comma-separated · leave blank for single colour)"
+        defaultValue={d?.colours?.join(", ") ?? ""}
+        placeholder="Indigo, Black, Sand"
+      />
       <Field name="made_in" label="Made in" defaultValue={d?.made_in} placeholder="Nigeria" />
       <Field name="sizes" label="Sizes (comma-separated)" defaultValue={d?.sizes?.join(", ")} placeholder="XS, S, M, L" />
       <Field name="composition" label="Composition (comma-separated)" defaultValue={d?.composition?.join(", ")} placeholder="100% aso oke cotton" />

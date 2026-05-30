@@ -113,8 +113,8 @@ export default function Navigation({
           </Link>
 
           <div className="flex items-center justify-end gap-5 lg:gap-7 text-[11px] tracking-[0.14em] uppercase font-medium" style={{ color: "var(--color-ink)" }}>
-            <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="hidden sm:inline lux-link">
-              Search
+            <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="hidden sm:inline lux-link uppercase tracking-[0.14em]">
+              SEARCH
             </button>
             <Link href="/bag" aria-label="Bag" className="lux-link">
               Bag <span style={{ color: "var(--color-muted)" }}>({bagCount})</span>
@@ -223,7 +223,7 @@ export default function Navigation({
             })}
             <hr className="my-3" style={{ borderColor: "var(--color-rule)" }} />
             <button type="button" onClick={() => { setMenuOpen(false); setSearchOpen(true); }} className="text-left py-2 tracking-[0.1em] uppercase font-medium">
-              Search
+              SEARCH
             </button>
             <Link href={accountHref} onClick={() => setMenuOpen(false)} className="py-2">{accountLabel}</Link>
             <Link href="/stockists"  onClick={() => setMenuOpen(false)} className="py-2">Stockists</Link>

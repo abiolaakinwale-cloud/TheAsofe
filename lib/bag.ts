@@ -3,7 +3,9 @@ import { cookies } from "next/headers";
 import { getAnonSupabase } from "./supabase/anon";
 import type { Brand, Product } from "./data";
 
-export type BagItem = { slug: string; size: string; qty: number };
+// `colour` is optional in the cookie to keep entries from the pre-variants era
+// valid. At read time we fall back to the product's default colour when missing.
+export type BagItem = { slug: string; colour?: string; size: string; qty: number };
 
 const COOKIE = "bag";
 const MAX_QTY_PER_LINE = 9;
@@ -20,6 +22,7 @@ export async function readBag(): Promise<BagItem[]> {
     return parsed.filter(
       (i): i is BagItem =>
         i && typeof i.slug === "string" && typeof i.size === "string" && Number.isInteger(i.qty) && i.qty > 0
+        && (i.colour === undefined || typeof i.colour === "string")
     );
   } catch {
     return [];
@@ -48,6 +51,8 @@ export async function bagCount(): Promise<number> {
 // ─── Enriched bag (joined with product + brand + stock) ─────────────────────
 
 export type EnrichedBagItem = BagItem & {
+  // After enrichment, colour is always populated (falls back to product.colour).
+  colour: string;
   product: Product;
   brand: Brand | null;
   stock: number;
@@ -69,13 +74,13 @@ export async function getEnrichedBag(): Promise<EnrichedBag> {
   const [{ data: products }, { data: brands }, { data: stocks }] = await Promise.all([
     sb.from("products").select("*").in("slug", slugs),
     sb.from("brands").select("slug, name, tagline, founded, origin, story, hero_image"),
-    sb.from("stock_levels").select("product_slug, size, quantity").in("product_slug", slugs),
+    sb.from("stock_levels").select("product_slug, colour, size, quantity").in("product_slug", slugs),
   ]);
 
   const productBySlug = new Map((products ?? []).map(p => [p.slug, p]));
   const brandBySlug = new Map((brands ?? []).map(b => [b.slug, b]));
-  const stockBySlugSize = new Map(
-    (stocks ?? []).map(s => [`${s.product_slug}|${s.size}`, s.quantity])
+  const stockByKey = new Map(
+    (stocks ?? []).map(s => [`${s.product_slug}|${s.colour ?? ""}|${s.size}`, s.quantity])
   );
 
   const items: EnrichedBagItem[] = [];
@@ -85,7 +90,8 @@ export async function getEnrichedBag(): Promise<EnrichedBag> {
   for (const r of raw) {
     const p = productBySlug.get(r.slug);
     if (!p) continue; // dropped product
-    const stock = stockBySlugSize.get(`${r.slug}|${r.size}`) ?? 0;
+    const colour = r.colour ?? p.colour ?? "";
+    const stock = stockByKey.get(`${r.slug}|${colour}|${r.size}`) ?? 0;
     // Made-to-order products can be ordered without on-hand stock.
     const canBackorder = !!p.made_to_order && !!p.lead_time_weeks && p.lead_time_weeks > 0;
     const cappedQty = canBackorder
@@ -97,6 +103,7 @@ export async function getEnrichedBag(): Promise<EnrichedBag> {
     count += cappedQty;
     items.push({
       slug: r.slug,
+      colour,
       size: r.size,
       qty: cappedQty,
       product: {
@@ -118,6 +125,7 @@ export async function getEnrichedBag(): Promise<EnrichedBag> {
         featured: p.featured || undefined,
         madeToOrder: p.made_to_order || undefined,
         leadTimeWeeks: p.lead_time_weeks ?? undefined,
+        colours: p.colours && p.colours.length > 0 ? p.colours : undefined,
       },
       brand: brandBySlug.get(p.brand)
         ? {
@@ -138,15 +146,17 @@ export async function getEnrichedBag(): Promise<EnrichedBag> {
   return { items, subtotal, count };
 }
 
-// Helper: stock for a single (product, size) — used by the product page to gate "Add to bag"
+/** Stock for a single product, keyed by `${colour}|${size}`.
+ *  Pre-variants stock rows have `colour = ''` which we surface under the
+ *  product's default colour so the existing UI keeps working. */
 export async function getStock(productSlug: string): Promise<Record<string, number>> {
   const sb = getAnonSupabase();
   const { data } = await sb
     .from("stock_levels")
-    .select("size, quantity")
+    .select("colour, size, quantity")
     .eq("product_slug", productSlug);
   const m: Record<string, number> = {};
-  for (const r of data ?? []) m[r.size] = r.quantity;
+  for (const r of data ?? []) m[`${r.colour ?? ""}|${r.size}`] = r.quantity;
   return m;
 }
 

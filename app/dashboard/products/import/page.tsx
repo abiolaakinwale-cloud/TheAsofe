@@ -37,7 +37,8 @@ export default async function BulkImportPage() {
             <Col k="category"    v="womenswear · menswear · bags · shoes · jewellery" />
             <Col k="subcategory" v="optional · free text" />
             <Col k="price"       v="GBP integer, no decimals" />
-            <Col k="colour"      v="short colour label" />
+            <Col k="colour"      v="default colour label (used as fallback when no variants)" />
+            <Col k="colours"     v="optional · comma-separated list for variants (e.g. &quot;Indigo,Black&quot;)" />
             <Col k="made_in"     v="country" />
             <Col k="description" v="paragraph; wrap in quotes if it has commas" />
             <Col k="sizes"       v="separate with , ; or | (e.g. &quot;XS,S,M,L&quot;)" />

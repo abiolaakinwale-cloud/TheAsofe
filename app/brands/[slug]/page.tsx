@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getBrand, getBrands, getProductsByBrand } from "@/lib/queries";
 import { getSiteSettings } from "@/lib/cms";
+import { getWishlistSlugs } from "@/lib/wishlist";
 import ProductCard from "@/components/ProductCard";
 
 export async function generateStaticParams() {
@@ -31,11 +32,12 @@ const brandGround: Record<string, string> = {
 
 export default async function BrandPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [brand, items, brands, settings] = await Promise.all([
+  const [brand, items, brands, settings, wishlistSlugs] = await Promise.all([
     getBrand(slug),
     getProductsByBrand(slug),
     getBrands(),
     getSiteSettings(),
+    getWishlistSlugs(),
   ]);
   if (!brand) notFound();
   const ground = brandGround[slug] ?? "var(--color-cream)";
@@ -104,7 +106,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
             </p>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 lg:gap-x-10 gap-y-14">
-              {items.map(p => <ProductCard key={p.slug} product={p} brand={brand} />)}
+              {items.map(p => <ProductCard key={p.slug} product={p} brand={brand} inWishlist={wishlistSlugs.has(p.slug)} />)}
             </div>
           )}
         </div>

@@ -3,11 +3,13 @@
 import { useState, useRef, useTransition } from "react";
 import { importStock, type StockImportResult } from "./actions";
 
-const TEMPLATE = `slug,size,quantity
-aso-oke-wrap-coat,XS,5
-aso-oke-wrap-coat,S,12
-aso-oke-wrap-coat,M,8
-aso-oke-wrap-coat,L,3
+const TEMPLATE = `slug,colour,size,quantity
+aso-oke-wrap-coat,,XS,5
+aso-oke-wrap-coat,,S,12
+aso-oke-wrap-coat,,M,8
+aso-oke-wrap-coat,,L,3
+bazin-riche-jacket,Indigo,M,4
+bazin-riche-jacket,Black,M,2
 `;
 
 export default function ImportStockForm() {
@@ -135,7 +137,7 @@ function Results({ r }: { r: StockImportResult }) {
                 {row.status === "ok" ? "Updated" : "Failed"}
               </span>
               <span className="font-mono text-xs pt-0.5 flex-shrink-0" style={{ color: "var(--color-ink)" }}>
-                {row.slug || "(no slug)"} · {row.size || "(no size)"}
+                {row.slug || "(no slug)"}{row.colour ? ` · ${row.colour}` : ""} · {row.size || "(no size)"}
               </span>
               {row.status === "ok" && (
                 <span className="text-xs tabular-nums" style={{ color: "var(--color-muted)" }}>→ qty {row.quantity}</span>

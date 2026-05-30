@@ -35,6 +35,7 @@ export default async function BulkStockImportPage() {
           <summary className="cursor-pointer text-xs tracking-[0.14em] uppercase" style={{ color: "var(--color-ink)" }}>Column reference</summary>
           <div className="mt-4 grid sm:grid-cols-2 gap-x-10 gap-y-3 text-xs">
             <Col k="slug"     v="Existing product slug from your collection" />
+            <Col k="colour"   v="Required when the product has variants · leave blank for single-colour products" />
             <Col k="size"     v="One of the sizes defined on the product" />
             <Col k="quantity" v="Non-negative integer (0 = sold out)" />
           </div>

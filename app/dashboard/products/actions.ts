@@ -26,6 +26,8 @@ function parsePayload(formData: FormData, brand: string | null) {
   const madeIn = String(formData.get("made_in") || "").trim();
   const sizes = String(formData.get("sizes") || "")
     .split(",").map(s => s.trim()).filter(Boolean);
+  const coloursList = String(formData.get("colours") || "")
+    .split(",").map(s => s.trim()).filter(Boolean);
   const composition = String(formData.get("composition") || "")
     .split(",").map(s => s.trim()).filter(Boolean);
   const images = String(formData.get("images") || "")
@@ -61,6 +63,7 @@ function parsePayload(formData: FormData, brand: string | null) {
     published, new_arrival: newArrival, featured,
     made_to_order: madeToOrder,
     lead_time_weeks: madeToOrder ? Math.round(leadTimeWeeks!) : null,
+    colours: coloursList.length > 0 ? coloursList : null,
     brand: brand!,
     seller: `${brand}-direct`,
     currency: "GBP" as const,
@@ -129,23 +132,48 @@ export async function updateStock(productSlug: string, formData: FormData) {
   const { brand } = await getSellerContext();
   const sb = getAdminSupabase();
 
-  const { data: product } = await sb.from("products").select("brand, sizes").eq("slug", productSlug).maybeSingle();
+  const { data: product } = await sb
+    .from("products")
+    .select("brand, sizes, colour, colours")
+    .eq("slug", productSlug)
+    .maybeSingle();
   if (!product) throw new Error("Product not found.");
   if (product.brand !== brand) throw new Error("You can only manage stock for your own products.");
 
-  const rows = (product.sizes as string[]).map(size => {
-    const raw = formData.get(`stock__${size}`);
-    const qty = Number(raw);
-    return {
-      product_slug: productSlug,
-      size,
-      quantity: Number.isFinite(qty) && qty >= 0 ? Math.floor(qty) : 0,
-      updated_at: new Date().toISOString(),
-    };
-  });
+  // Variants: if colours[] is set, use it; otherwise treat as a single colour
+  // matrix (using the default colour string, or "" for legacy single-colour rows).
+  const variants: string[] =
+    Array.isArray(product.colours) && product.colours.length > 0
+      ? (product.colours as string[])
+      : [product.colour ?? ""];
 
-  const { error } = await sb.from("stock_levels").upsert(rows, { onConflict: "product_slug,size" });
-  if (error) throw new Error(error.message);
+  const sizes = product.sizes as string[];
+  const rows: { product_slug: string; colour: string; size: string; quantity: number; updated_at: string }[] = [];
+
+  for (const colour of variants) {
+    for (const size of sizes) {
+      // Form field name: `stock__{colour}__{size}`. If a row's field is missing
+      // (e.g. seller's form hasn't been re-rendered with the new colour), leave
+      // the existing stock untouched by not including it in the upsert.
+      const raw = formData.get(`stock__${colour}__${size}`);
+      if (raw === null) continue;
+      const qty = Number(raw);
+      rows.push({
+        product_slug: productSlug,
+        colour,
+        size,
+        quantity: Number.isFinite(qty) && qty >= 0 ? Math.floor(qty) : 0,
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (rows.length > 0) {
+    const { error } = await sb
+      .from("stock_levels")
+      .upsert(rows, { onConflict: "product_slug,colour,size" });
+    if (error) throw new Error(error.message);
+  }
 
   revalidatePath(`/dashboard/products/${productSlug}/edit`);
   revalidatePath(`/products/${productSlug}`);

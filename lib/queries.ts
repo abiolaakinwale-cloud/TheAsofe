@@ -25,6 +25,7 @@ type ProductRow = {
   featured: boolean;
   made_to_order?: boolean;
   lead_time_weeks?: number | null;
+  colours?: string[] | null;
 };
 
 type BrandRow = {
@@ -63,6 +64,7 @@ const toProduct = (r: ProductRow): Product => ({
   featured: r.featured || undefined,
   madeToOrder: r.made_to_order || undefined,
   leadTimeWeeks: r.lead_time_weeks ?? undefined,
+  colours: r.colours && r.colours.length > 0 ? r.colours : undefined,
 });
 
 const toBrand = (r: BrandRow): Brand => ({
@@ -123,7 +125,7 @@ export async function getProducts(): Promise<Product[]> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -157,7 +159,7 @@ export async function getProduct(slug: string): Promise<Product | null> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -170,7 +172,7 @@ export async function getProductsByCategory(slug: string): Promise<Product[]> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("category", slug)
     .order("name");
@@ -184,7 +186,7 @@ export async function getProductsByCategories(slugs: string[]): Promise<Product[
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .in("category", slugs)
     .order("name");
@@ -201,7 +203,7 @@ export async function getProductsBySubcategories(subSlugs: string[]): Promise<Pr
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .not("subcategory", "is", null)
     .order("name");
@@ -217,7 +219,7 @@ export async function getProductsByBrand(slug: string): Promise<Product[]> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("brand", slug)
     .order("name");
@@ -230,7 +232,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("featured", true)
     .order("name");
@@ -250,7 +252,7 @@ export async function searchCatalog(qRaw: string): Promise<{ products: Product[]
   const [productRes, brandRes] = await Promise.all([
     sb.from("products")
       .select(
-        "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+        "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
       )
       .or(`name.ilike.${pattern},description.ilike.${pattern},colour.ilike.${pattern}`)
       .limit(40),
@@ -274,7 +276,7 @@ export async function getNewArrivals(): Promise<Product[]> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("new_arrival", true)
     .order("name");

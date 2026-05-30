@@ -28,7 +28,7 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
 
   const { data: items } = await sb
     .from("order_items")
-    .select("id, product_slug, brand_slug, name, size, qty, unit_price, lead_time_weeks")
+    .select("id, product_slug, brand_slug, name, colour, size, qty, unit_price, lead_time_weeks")
     .eq("order_id", id);
 
   // Look up product images via anon client (catalogue is public).
@@ -100,7 +100,7 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
                       {it.name}
                     </Link>
                     <p className="text-xs mt-1" style={{ color: "var(--color-muted)" }}>
-                      {it.brand_slug.replace(/-/g, " ")} · Size {it.size} · Qty {it.qty}
+                      {it.brand_slug.replace(/-/g, " ")}{it.colour ? ` · ${it.colour}` : ""} · Size {it.size} · Qty {it.qty}
                     </p>
                     {it.lead_time_weeks && (
                       <p className="text-[10px] tracking-[0.18em] uppercase mt-2" style={{ color: "var(--color-emerald)" }}>

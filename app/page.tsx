@@ -7,15 +7,18 @@ import {
   getFeaturedProducts,
 } from "@/lib/queries";
 import { getSiteSettings, getPublishedJournalPosts } from "@/lib/cms";
+import { getWishlistSlugs } from "@/lib/wishlist";
+import ProductCard from "@/components/ProductCard";
 import Reveal, { Stagger, StaggerItem } from "./sellers/_components/Reveal";
 
 export default async function HomePage() {
-  const [brands, categories, featured, settings, journalPosts] = await Promise.all([
+  const [brands, categories, featured, settings, journalPosts, wishlistSlugs] = await Promise.all([
     getBrands(),
     getCategories(),
     getFeaturedProducts(),
     getSiteSettings(),
     getPublishedJournalPosts(),
+    getWishlistSlugs(),
   ]);
 
   return (
@@ -24,7 +27,13 @@ export default async function HomePage() {
       <StatsStrip />
       <ShopByCategory categories={categories} />
       <Mission />
-      {featured.length > 0 && <FeaturedEdit products={featured.slice(0, 4)} brandsBySlug={new Map(brands.map(b => [b.slug, b]))} />}
+      {featured.length > 0 && (
+        <FeaturedEdit
+          products={featured.slice(0, 4)}
+          brandsBySlug={new Map(brands.map(b => [b.slug, b]))}
+          wishlistSlugs={wishlistSlugs}
+        />
+      )}
       {settings.spotlight.enabled && (() => {
         const spot = brands.find(b => b.slug === settings.spotlight.brandSlug);
         return spot ? <DesignerSpotlightBand brand={spot} settings={settings} /> : null;
@@ -478,9 +487,11 @@ function FeaturedDesigners({ brands }: { brands: Awaited<ReturnType<typeof getBr
 function FeaturedEdit({
   products,
   brandsBySlug,
+  wishlistSlugs,
 }: {
   products: Awaited<ReturnType<typeof getFeaturedProducts>>;
   brandsBySlug: Map<string, Awaited<ReturnType<typeof getBrands>>[number]>;
+  wishlistSlugs: Set<string>;
 }) {
   return (
     <section className="py-20 lg:py-28 border-t" style={{ borderColor: "var(--color-rule)" }}>
@@ -499,28 +510,15 @@ function FeaturedEdit({
           </div>
         </Reveal>
         <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 lg:gap-x-10 gap-y-14">
-          {products.map(p => {
-            const brand = brandsBySlug.get(p.brand);
-            return (
-              <StaggerItem key={p.slug}>
-                <Link href={`/products/${p.slug}`} className="group block">
-                  <div className="relative aspect-[4/5] mb-4 overflow-hidden" style={{ backgroundColor: "var(--color-cream)" }}>
-                    <Image
-                      src={p.images[0]}
-                      alt={p.name}
-                      fill
-                      sizes="(max-width: 768px) 50vw, 25vw"
-                      className="object-cover product-image"
-                    />
-                  </div>
-                  <p className="eyebrow mb-1 truncate" style={{ color: "var(--color-muted)" }}>{brand?.name}</p>
-                  <p className="serif text-base lg:text-[1.05rem] leading-snug truncate" style={{ color: "var(--color-ink)" }}>
-                    {p.name}
-                  </p>
-                </Link>
-              </StaggerItem>
-            );
-          })}
+          {products.map(p => (
+            <StaggerItem key={p.slug}>
+              <ProductCard
+                product={p}
+                brand={brandsBySlug.get(p.brand)}
+                inWishlist={wishlistSlugs.has(p.slug)}
+              />
+            </StaggerItem>
+          ))}
         </Stagger>
       </div>
     </section>

@@ -117,6 +117,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               productSlug={product.slug}
               sizes={product.sizes}
               stock={stock}
+              colours={product.colours}
+              defaultColour={product.colour}
               madeToOrder={product.madeToOrder}
               leadTimeWeeks={product.leadTimeWeeks}
               inWishlist={inWishlist}

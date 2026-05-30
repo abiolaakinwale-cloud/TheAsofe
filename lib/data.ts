@@ -41,6 +41,9 @@ export type Product = {
   sizes: string[];
   colour: string;
   images: string[];
+  /** All available colours. When empty/undefined, behaves as a single-colour
+   * product using the `colour` field above. */
+  colours?: string[];
   newArrival?: boolean;
   featured?: boolean;
   madeToOrder?: boolean;

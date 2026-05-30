@@ -93,8 +93,10 @@ export async function POST(request: NextRequest) {
         // 4. Decrement stock for each line item, and fire a low-stock alert if we
         //    crossed the threshold for any (product, size) — to the seller of that brand.
         for (const item of order.order_items ?? []) {
+          const colour = (item as { colour?: string | null }).colour ?? "";
           await sb.rpc("decrement_stock", {
             p_slug: item.product_slug,
+            p_colour: colour,
             p_size: item.size,
             p_qty: item.qty,
           });
@@ -103,6 +105,7 @@ export async function POST(request: NextRequest) {
             .from("stock_levels")
             .select("quantity")
             .eq("product_slug", item.product_slug)
+            .eq("colour", colour)
             .eq("size", item.size)
             .maybeSingle();
 
@@ -150,7 +153,7 @@ export async function POST(request: NextRequest) {
 
         const { data: order } = await sb
           .from("orders")
-          .select("id, status, order_items(product_slug, size, qty)")
+          .select("id, status, order_items(product_slug, colour, size, qty)")
           .eq("stripe_payment_intent_id", paymentIntentId)
           .maybeSingle();
         if (!order || order.status === "refunded") break;
@@ -163,6 +166,7 @@ export async function POST(request: NextRequest) {
         for (const item of order.order_items ?? []) {
           await sb.rpc("increment_stock", {
             p_slug: item.product_slug,
+            p_colour: (item as { colour?: string | null }).colour ?? "",
             p_size: item.size,
             p_qty: item.qty,
           });
