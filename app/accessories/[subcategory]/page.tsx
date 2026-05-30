@@ -4,7 +4,9 @@ import type { Metadata } from "next";
 import { getBrands, getProductsBySubcategories } from "@/lib/queries";
 import ProductCard from "@/components/ProductCard";
 import FilterSidebar from "@/components/FilterSidebar";
+import Pagination from "@/components/Pagination";
 import { applyFilters, parseFilters } from "@/lib/filters";
+import { paginate } from "@/lib/pagination";
 import { findSubcategory, getSubcategories } from "@/lib/subcategories";
 import { getWishlistSlugs } from "@/lib/wishlist";
 
@@ -55,6 +57,7 @@ export default async function AccessoriesSubcategoryPage({
 
   const filters = parseFilters(sp);
   const filtered = applyFilters(products, filters);
+  const pageData = paginate(filtered, sp.page);
 
   return (
     <>
@@ -99,11 +102,14 @@ export default async function AccessoriesSubcategoryPage({
                   No pieces match these filters. Try widening your search.
                 </p>
               ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 lg:gap-x-6 gap-y-12">
-                  {filtered.map(p => (
-                    <ProductCard key={p.slug} product={p} brand={brandsBySlug.get(p.brand)} inWishlist={wishlistSlugs.has(p.slug)} />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 lg:gap-x-6 gap-y-12">
+                    {pageData.items.map(p => (
+                      <ProductCard key={p.slug} product={p} brand={brandsBySlug.get(p.brand)} inWishlist={wishlistSlugs.has(p.slug)} />
+                    ))}
+                  </div>
+                  <Pagination page={pageData.page} totalPages={pageData.totalPages} searchParams={sp} />
+                </>
               )}
             </div>
           </div>

@@ -5,7 +5,9 @@ import type { Metadata } from "next";
 import { getBrand, getBrands, getProductsByBrand } from "@/lib/queries";
 import { getSiteSettings } from "@/lib/cms";
 import { getWishlistSlugs } from "@/lib/wishlist";
+import { paginate } from "@/lib/pagination";
 import ProductCard from "@/components/ProductCard";
+import Pagination from "@/components/Pagination";
 
 export async function generateStaticParams() {
   const brands = await getBrands();
@@ -30,8 +32,14 @@ const brandGround: Record<string, string> = {
   "bogolan-studio":   "var(--color-blush)",       // Bamako — mud cloth on cream
 };
 
-export default async function BrandPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default async function BrandPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const [brand, items, brands, settings, wishlistSlugs] = await Promise.all([
     getBrand(slug),
     getProductsByBrand(slug),
@@ -40,6 +48,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
     getWishlistSlugs(),
   ]);
   if (!brand) notFound();
+  const pageData = paginate(items, sp.page);
   const ground = brandGround[slug] ?? "var(--color-cream)";
   const isDark = ground !== "var(--color-blush)" && ground !== "var(--color-saffron)" && ground !== "var(--color-sage)" && ground !== "var(--color-cream)";
   const ink = isDark ? "var(--color-ground)" : "var(--color-ink)";
@@ -105,9 +114,12 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
               New work from {brand.name} arrives shortly.
             </p>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 lg:gap-x-10 gap-y-14">
-              {items.map(p => <ProductCard key={p.slug} product={p} brand={brand} inWishlist={wishlistSlugs.has(p.slug)} />)}
-            </div>
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 lg:gap-x-10 gap-y-14">
+                {pageData.items.map(p => <ProductCard key={p.slug} product={p} brand={brand} inWishlist={wishlistSlugs.has(p.slug)} />)}
+              </div>
+              <Pagination page={pageData.page} totalPages={pageData.totalPages} searchParams={sp} />
+            </>
           )}
         </div>
       </section>
