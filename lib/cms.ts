@@ -28,20 +28,37 @@ export type SiteSettings = {
     label: string;
     href: string;
   };
+  // Editable page-level images (no copy — just the image URL or upload).
+  images: {
+    sellersBand: string;        // homepage "For brands" band
+    sellersHero: string;        // /sellers hero
+    conciergeFeature: string;   // /concierge "Occasion dressing" image
+    stockistsFeature: string;   // /stockists "Book a viewing" image
+    signinSide: string;         // /signin right-side image
+  };
+  // Designer Spotlight — featured designer of the moment. Surfaces on homepage,
+  // links to /brands/[slug]/feature for the full editorial treatment.
+  spotlight: {
+    enabled: boolean;
+    brandSlug: string;          // which brand row to feature
+    eyebrow: string;
+    editorialImage: string;     // cinematic hero shot (founder-supplied or commissioned)
+    quote: string;              // a single pull quote, large serif italic on the feature page
+    quoteAttribution: string;
+  };
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   hero: {
-    eyebrow: "The Home of African Fashion",
-    title: "Premium African fashion, fulfilled from the UK.",
+    eyebrow: "The Global Home for African Fashion",
+    title: "The Global Home for African Fashion.",
     body:
-      "Curated pieces from independent African maisons — delivered quickly to the UK and Europe, " +
-      "with secure GBP checkout and a local returns address.",
+      "Premium African fashion with fast UK delivery and trusted diaspora fulfilment.",
     image: "/asofe/hero-main.png",
-    primaryLabel: "Shop the collections",
+    primaryLabel: "Shop Collections",
     primaryHref: "/brands",
-    secondaryLabel: "Read the journal",
-    secondaryHref: "/editorial",
+    secondaryLabel: "Sell on Asofe",
+    secondaryHref: "/sellers",
   },
   journal: {
     eyebrow: "From the journal",
@@ -62,6 +79,22 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     label: "Request an appointment",
     href: "/concierge",
   },
+  images: {
+    sellersBand:      "/asofe/sellers-secondary.png",
+    sellersHero:      "/asofe/sellers-hero.png",
+    conciergeFeature: "/asofe/editorial-occasion.png",
+    stockistsFeature: "/asofe/packaging-giftbox.png",
+    signinSide:       "/asofe/hero-secondary.png",
+  },
+  spotlight: {
+    enabled:          true,
+    brandSlug:        "atelier-adunni",
+    eyebrow:          "Designer of the moment",
+    editorialImage:   "/asofe/featured-bankekuku.png",
+    quote:
+      "We don't weave aso oke to preserve it. We weave it because it's the most beautiful cloth we know how to make.",
+    quoteAttribution: "From the founder",
+  },
 };
 
 export async function getSiteSettings(): Promise<SiteSettings> {
@@ -77,6 +110,8 @@ function mergeSettings(a: SiteSettings, b: Partial<SiteSettings>): SiteSettings 
     hero:      { ...a.hero, ...(b.hero ?? {}) },
     journal:   { ...a.journal, ...(b.journal ?? {}) },
     concierge: { ...a.concierge, ...(b.concierge ?? {}) },
+    images:    { ...a.images, ...(b.images ?? {}) },
+    spotlight: { ...a.spotlight, ...(b.spotlight ?? {}) },
   };
 }
 

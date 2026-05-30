@@ -13,16 +13,30 @@ export default async function BrandsPage() {
   const productsByBrand = (slug: string) => products.filter(p => p.brand === slug);
   return (
     <>
-      <section style={{ backgroundColor: "var(--color-cobalt)", color: "var(--color-ground)" }}>
-        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-24 lg:py-32">
-          <p className="eyebrow mb-6" style={{ color: "var(--color-saffron-soft)" }}>The Designers</p>
-          <h1 className="display text-[clamp(2.6rem,6vw,5.4rem)] max-w-[18ch] mb-8">
-            A house for every preference.
-          </h1>
-          <p className="text-base lg:text-lg leading-relaxed max-w-xl" style={{ color: "rgba(255,255,255,0.75)" }}>
-            Eight independent African designers, each chosen for the integrity of their craft. From the looms of Iseyin to
-            the workshops of Marrakech, every garment passes a quiet test before it appears here.
-          </p>
+      <section className="relative" style={{ backgroundColor: "var(--color-cobalt)", color: "var(--color-ground)" }}>
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 grid lg:grid-cols-12 gap-10 lg:gap-16 items-center min-h-[60vh] py-24 lg:py-32">
+          <div className="lg:col-span-6">
+            <p className="eyebrow mb-6" style={{ color: "var(--color-saffron-soft)" }}>The Designers</p>
+            <h1 className="display text-[clamp(2.6rem,6vw,5.4rem)] max-w-[18ch] mb-8">
+              A house for every preference.
+            </h1>
+            <p className="text-base lg:text-lg leading-relaxed max-w-xl" style={{ color: "rgba(255,255,255,0.75)" }}>
+              Eight independent African designers, each chosen for the integrity of their craft. From the looms of Iseyin to
+              the workshops of Marrakech, every garment passes a quiet test before it appears here.
+            </p>
+          </div>
+          <div className="lg:col-span-6 relative aspect-[4/5] lg:aspect-[3/4] lg:max-h-[640px]">
+            <div className="absolute inset-0 overflow-hidden">
+              <Image
+                src="/asofe/category-designers.png"
+                alt="Asofe designers"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+              />
+            </div>
+          </div>
         </div>
       </section>
 

@@ -43,6 +43,8 @@ export type Product = {
   images: string[];
   newArrival?: boolean;
   featured?: boolean;
+  madeToOrder?: boolean;
+  leadTimeWeeks?: number;
 };
 
 export const formatPrice = (n: number) =>

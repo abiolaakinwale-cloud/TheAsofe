@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { getSiteSettings } from "@/lib/cms";
+import { getBrands } from "@/lib/queries";
 import { updateSiteSettings } from "./actions";
 import ImagePicker from "@/components/admin/ImagePicker";
 
@@ -9,7 +10,7 @@ export default async function AdminCmsPage({
   searchParams: Promise<{ saved?: string }>;
 }) {
   const { saved } = await searchParams;
-  const s = await getSiteSettings();
+  const [s, brands] = await Promise.all([getSiteSettings(), getBrands()]);
 
   return (
     <>
@@ -57,6 +58,40 @@ export default async function AdminCmsPage({
             <Area name="concierge.body"    label="Body"      defaultValue={s.concierge.body} rows={3} full />
             <Text name="concierge.label"   label="CTA label" defaultValue={s.concierge.label} />
             <Text name="concierge.href"    label="CTA link"  defaultValue={s.concierge.href} />
+          </Grid>
+        </Section>
+
+        <Section title="Page images">
+          <Grid>
+            <ImagePicker name="images.sellersBand"      label="Homepage · 'For brands' band" folder="cms/sellers-band"  defaultValue={s.images.sellersBand} full />
+            <ImagePicker name="images.sellersHero"      label="/sellers · Hero"              folder="cms/sellers-hero"  defaultValue={s.images.sellersHero} full />
+            <ImagePicker name="images.conciergeFeature" label="/concierge · Feature image"   folder="cms/concierge"     defaultValue={s.images.conciergeFeature} full />
+            <ImagePicker name="images.stockistsFeature" label="/stockists · Feature image"   folder="cms/stockists"     defaultValue={s.images.stockistsFeature} full />
+            <ImagePicker name="images.signinSide"       label="/signin · Side image"         folder="cms/signin"        defaultValue={s.images.signinSide} full />
+          </Grid>
+        </Section>
+
+        <Section title="Designer spotlight">
+          <Grid>
+            <label className="block lg:col-span-2 inline-flex items-center gap-3 text-sm" style={{ color: "var(--color-ink)" }}>
+              <input type="checkbox" name="spotlight.enabled" defaultChecked={s.spotlight.enabled} className="w-4 h-4" />
+              Surface a designer spotlight on the homepage + add a feature link on their brand page
+            </label>
+            <label className="block">
+              <span className="block mb-2 text-[10px] tracking-[0.18em] uppercase font-medium" style={{ color: "var(--color-ink)" }}>Featured designer</span>
+              <select
+                name="spotlight.brandSlug"
+                defaultValue={s.spotlight.brandSlug}
+                className="w-full bg-transparent border-b py-2 text-sm outline-none focus:border-[var(--color-ink)]"
+                style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+              >
+                {brands.map(b => <option key={b.slug} value={b.slug}>{b.name}</option>)}
+              </select>
+            </label>
+            <Text name="spotlight.eyebrow"          label="Eyebrow"            defaultValue={s.spotlight.eyebrow} />
+            <ImagePicker name="spotlight.editorialImage" label="Editorial image" folder="cms/spotlight" defaultValue={s.spotlight.editorialImage} full />
+            <Area name="spotlight.quote"            label="Pull quote"         defaultValue={s.spotlight.quote} rows={3} full />
+            <Text name="spotlight.quoteAttribution" label="Quote attribution"  defaultValue={s.spotlight.quoteAttribution} />
           </Grid>
         </Section>
 

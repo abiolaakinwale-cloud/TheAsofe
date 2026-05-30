@@ -26,7 +26,7 @@ export default async function AdminBrandsPage() {
             <ul className="space-y-px">
               {brands!.map(b => (
                 <li key={b.slug} className="p-6 grid grid-cols-12 items-center gap-4" style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)" }}>
-                  <div className="col-span-6">
+                  <div className="col-span-5">
                     <Link href={`/brands/${b.slug}`} className="serif text-xl lux-link" style={{ color: "var(--color-ink)" }}>
                       {b.name}
                     </Link>
@@ -34,7 +34,9 @@ export default async function AdminBrandsPage() {
                   </div>
                   <p className="col-span-3 text-sm" style={{ color: "var(--color-ink-soft)" }}>{b.origin}</p>
                   <p className="col-span-2 text-sm tabular-nums" style={{ color: "var(--color-ink-soft)" }}>{byBrand.get(b.slug) ?? 0} pieces</p>
-                  <p className="col-span-1 text-xs text-right" style={{ color: "var(--color-muted)" }}>{b.founded}</p>
+                  <Link href={`/admin/brands/${b.slug}/edit`} className="col-span-2 text-[10px] tracking-[0.18em] uppercase lux-link text-right" style={{ color: "var(--color-ink)" }}>
+                    Edit →
+                  </Link>
                 </li>
               ))}
             </ul>

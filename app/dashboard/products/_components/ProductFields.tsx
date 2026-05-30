@@ -16,6 +16,8 @@ type Defaults = {
   published?: boolean;
   new_arrival?: boolean;
   featured?: boolean;
+  made_to_order?: boolean;
+  lead_time_weeks?: number | null;
 };
 
 export default function ProductFields({
@@ -63,10 +65,19 @@ export default function ProductFields({
       </label>
 
       <div className="lg:col-span-2 flex flex-wrap gap-x-8 gap-y-3 pt-2">
-        <Toggle name="published"   defaultChecked={d?.published ?? true}  label="Published — visible on the public catalogue" />
-        <Toggle name="new_arrival" defaultChecked={d?.new_arrival ?? false} label="New arrival" />
-        <Toggle name="featured"    defaultChecked={d?.featured ?? false}    label="Featured" />
+        <Toggle name="published"      defaultChecked={d?.published ?? true}      label="Published — visible on the public catalogue" />
+        <Toggle name="new_arrival"    defaultChecked={d?.new_arrival ?? false}   label="New arrival" />
+        <Toggle name="featured"       defaultChecked={d?.featured ?? false}      label="Featured" />
+        <Toggle name="made_to_order"  defaultChecked={d?.made_to_order ?? false} label="Made to order (allow backorder when out of stock)" />
       </div>
+
+      <Field
+        name="lead_time_weeks"
+        label="Lead time (weeks) — only when made to order"
+        defaultValue={d?.lead_time_weeks?.toString() ?? ""}
+        placeholder="3"
+        inputMode="numeric"
+      />
     </div>
   );
 }

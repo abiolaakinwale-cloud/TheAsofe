@@ -72,9 +72,15 @@ export default async function BagPage() {
                     <dt style={{ color: "var(--color-muted)" }}>Colour</dt>
                     <dd style={{ color: "var(--color-ink)" }}>{it.product.colour}</dd>
                     <dt style={{ color: "var(--color-muted)" }}>Stock</dt>
-                    <dd style={{ color: it.stock < 3 ? "var(--color-oxblood)" : "var(--color-ink)" }}>
-                      {it.stock < 3 ? `Only ${it.stock} left` : "In stock"}
-                    </dd>
+                    {it.product.madeToOrder && it.stock === 0 ? (
+                      <dd style={{ color: "var(--color-emerald)" }}>
+                        Made to order · ships in {it.product.leadTimeWeeks} {it.product.leadTimeWeeks === 1 ? "week" : "weeks"}
+                      </dd>
+                    ) : (
+                      <dd style={{ color: it.stock < 3 ? "var(--color-oxblood)" : "var(--color-ink)" }}>
+                        {it.stock < 3 ? `Only ${it.stock} left` : "In stock"}
+                      </dd>
+                    )}
                   </dl>
                 </div>
 
@@ -83,7 +89,15 @@ export default async function BagPage() {
                   <span className="inline-flex items-center justify-center min-w-[2.5rem] py-2 px-2 text-sm tabular-nums border" style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}>
                     {it.qty}
                   </span>
-                  <QtyButton slug={it.slug} size={it.size} qty={it.qty + 1} label="+" disabled={it.qty >= it.stock} />
+                  <QtyButton
+                    slug={it.slug}
+                    size={it.size}
+                    qty={it.qty + 1}
+                    label="+"
+                    disabled={
+                      it.product.madeToOrder ? it.qty >= 9 : it.qty >= it.stock
+                    }
+                  />
                 </div>
 
                 <div className="col-span-4 lg:col-span-2 text-right self-center">

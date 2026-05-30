@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import PageHero from "@/components/PageHero";
+import { getSiteSettings } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "Stockists & showroom",
@@ -23,7 +24,8 @@ const points = [
   },
 ];
 
-export default function StockistsPage() {
+export default async function StockistsPage() {
+  const settings = await getSiteSettings();
   return (
     <>
       <PageHero
@@ -71,7 +73,7 @@ export default function StockistsPage() {
           </div>
           <div className="relative aspect-[4/5] lg:aspect-[5/6]" style={{ backgroundColor: "var(--color-ground)" }}>
             <Image
-              src="/asofe/packaging-giftbox.png"
+              src={settings.images.stockistsFeature}
               alt="An Asofe gift box and thank-you card"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"

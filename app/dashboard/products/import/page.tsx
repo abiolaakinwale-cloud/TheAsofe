@@ -6,7 +6,7 @@ import ImportForm from "./ImportForm";
 export default async function BulkImportPage() {
   const sb = await getServerSupabase();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect("/signin?next=/dashboard/products/import");
+  if (!user) redirect("/brand-signin?next=/dashboard/products/import");
   const { data: profile } = await sb.from("profiles").select("role, brand").eq("id", user.id).maybeSingle();
   if (!profile || (profile.role !== "seller" && profile.role !== "admin")) redirect("/dashboard");
   if (profile.role === "seller" && !profile.brand) redirect("/dashboard");
@@ -43,9 +43,11 @@ export default async function BulkImportPage() {
             <Col k="sizes"       v="separate with , ; or | (e.g. &quot;XS,S,M,L&quot;)" />
             <Col k="composition" v="separate with , (e.g. &quot;100% aso oke cotton&quot;)" />
             <Col k="images"      v="URLs separated by | or whitespace" />
-            <Col k="published"   v="true / false (default false)" />
-            <Col k="new_arrival" v="true / false (default false)" />
-            <Col k="featured"    v="true / false (default false)" />
+            <Col k="published"       v="true / false (default false)" />
+            <Col k="new_arrival"     v="true / false (default false)" />
+            <Col k="featured"        v="true / false (default false)" />
+            <Col k="made_to_order"   v="true / false (default false) — allows backorders" />
+            <Col k="lead_time_weeks" v="Positive integer · required when made_to_order is true" />
           </div>
         </details>
       </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import PageHero from "@/components/PageHero";
+import { getSiteSettings } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "The concierge",
@@ -27,7 +28,8 @@ const services = [
   },
 ];
 
-export default function ConciergePage() {
+export default async function ConciergePage() {
+  const settings = await getSiteSettings();
   return (
     <>
       <PageHero
@@ -86,7 +88,7 @@ export default function ConciergePage() {
         <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <div className="relative aspect-[4/5] lg:aspect-[5/6]" style={{ backgroundColor: "var(--color-ground)" }}>
             <Image
-              src="/asofe/editorial-occasion.png"
+              src={settings.images.conciergeFeature}
               alt="A couple in occasion wear"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"

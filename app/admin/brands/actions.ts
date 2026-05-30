@@ -49,3 +49,32 @@ export async function createBrand(formData: FormData) {
   revalidatePath("/admin");
   redirect("/admin/brands");
 }
+
+export async function updateBrand(originalSlug: string, formData: FormData) {
+  await requireAdmin();
+
+  const name = String(formData.get("name") || "").trim();
+  const tagline = String(formData.get("tagline") || "").trim();
+  const founded = String(formData.get("founded") || "").trim();
+  const origin = String(formData.get("origin") || "").trim();
+  const story = String(formData.get("story") || "").trim();
+  const heroImage = String(formData.get("hero_image") || "").trim();
+
+  if (!name || !tagline || !origin || !story || !heroImage) {
+    throw new Error("All fields except 'founded' are required.");
+  }
+
+  const sb = getAdminSupabase();
+  const { error } = await sb
+    .from("brands")
+    .update({ name, tagline, founded: founded || "—", origin, story, hero_image: heroImage })
+    .eq("slug", originalSlug);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/brands");
+  revalidatePath("/admin");
+  revalidatePath("/brands");
+  revalidatePath(`/brands/${originalSlug}`);
+  revalidatePath("/");
+  redirect("/admin/brands?saved=1");
+}

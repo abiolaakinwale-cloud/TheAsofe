@@ -45,11 +45,12 @@ export default function Reveal({ children, delay = 0, as = "div", className }: P
   );
 }
 
-export function Stagger({ children, className }: { children: ReactNode; className?: string }) {
+export function Stagger({ children, className, style }: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
   const enhance = useEnhance();
   return (
     <motion.div
       className={className}
+      style={style}
       initial={enhance ? "hidden" : "show"}
       whileInView="show"
       viewport={{ once: true, amount: 0.1 }}
@@ -63,9 +64,9 @@ export function Stagger({ children, className }: { children: ReactNode; classNam
   );
 }
 
-export function StaggerItem({ children, className }: { children: ReactNode; className?: string }) {
+export function StaggerItem({ children, className, style }: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <motion.div className={className} variants={fadeUp}>
+    <motion.div className={className} style={style} variants={fadeUp}>
       {children}
     </motion.div>
   );

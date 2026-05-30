@@ -19,7 +19,7 @@ const labelOf = (s: Status) => s.replace(/_/g, " ");
 export default async function DashboardShipmentsPage() {
   const sb = await getServerSupabase();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect("/signin?next=/dashboard/shipments");
+  if (!user) redirect("/brand-signin?next=/dashboard/shipments");
   const { data: profile } = await sb.from("profiles").select("role, brand").eq("id", user.id).maybeSingle();
   if (!profile || (profile.role !== "seller" && profile.role !== "admin")) redirect("/dashboard");
   if (profile.role === "seller" && !profile.brand) redirect("/dashboard");

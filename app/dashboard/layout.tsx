@@ -6,7 +6,7 @@ import { signOut } from "@/app/signin/actions";
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const sb = await getServerSupabase();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect("/signin?next=/dashboard");
+  if (!user) redirect("/brand-signin?next=/dashboard");
 
   const { data: profile } = await sb
     .from("profiles")
@@ -24,6 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/dashboard/products" className="lux-link">Products</Link>
             <Link href="/dashboard/orders" className="lux-link">Orders</Link>
             <Link href="/dashboard/shipments" className="lux-link">Shipments</Link>
+            <Link href="/dashboard/analytics" className="lux-link">Analytics</Link>
             {profile?.role === "admin" && (
               <Link href="/admin" className="lux-link" style={{ color: "var(--color-oxblood)" }}>Admin</Link>
             )}

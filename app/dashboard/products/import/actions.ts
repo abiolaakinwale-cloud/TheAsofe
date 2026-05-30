@@ -85,6 +85,14 @@ export async function importProducts(formData: FormData): Promise<ImportResult> 
       continue;
     }
 
+    const madeToOrder = asBool(r.made_to_order);
+    const leadTimeRaw = (r.lead_time_weeks || "").trim();
+    const leadTimeWeeks = leadTimeRaw === "" ? null : Number(leadTimeRaw);
+    if (madeToOrder && (leadTimeWeeks === null || !Number.isFinite(leadTimeWeeks) || leadTimeWeeks <= 0)) {
+      results.push({ row: rowNum, slug, status: "error", error: "lead_time_weeks must be a positive integer when made_to_order is true." });
+      continue;
+    }
+
     seenSlugs.add(slug);
     payloads.push({
       slug,
@@ -98,9 +106,11 @@ export async function importProducts(formData: FormData): Promise<ImportResult> 
       sizes,
       colour: r.colour,
       images,
-      published:   asBool(r.published),
-      new_arrival: asBool(r.new_arrival),
-      featured:    asBool(r.featured),
+      published:     asBool(r.published),
+      new_arrival:   asBool(r.new_arrival),
+      featured:      asBool(r.featured),
+      made_to_order: madeToOrder,
+      lead_time_weeks: madeToOrder ? Math.round(leadTimeWeeks!) : null,
       brand,
       seller: `${brand}-direct`,
       currency: "GBP",

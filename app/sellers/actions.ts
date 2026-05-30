@@ -1,9 +1,14 @@
 "use server";
 
+import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { notifyApplicationSubmitted } from "@/lib/notifications";
 
-export type ApplicationInput = {
+export type BrandRegistrationInput = {
+  // Account
+  email: string;
+  password: string;
+  // Brand
   brandName: string;
   founderName: string;
   instagramHandle: string;
@@ -13,11 +18,11 @@ export type ApplicationInput = {
   website?: string;
 };
 
-export type ApplicationResult =
+export type RegistrationResult =
   | { ok: true }
   | { ok: false; error: string };
 
-const required = [
+const requiredBrandFields = [
   "brandName",
   "founderName",
   "instagramHandle",
@@ -26,18 +31,45 @@ const required = [
   "whatsappNumber",
 ] as const;
 
-export async function submitApplication(input: ApplicationInput): Promise<ApplicationResult> {
-  for (const k of required) {
+export async function registerAsBrand(input: BrandRegistrationInput): Promise<RegistrationResult> {
+  // 1. Validate
+  if (!input.email?.includes("@")) {
+    return { ok: false, error: "Enter a valid email address." };
+  }
+  if (input.password.length < 8) {
+    return { ok: false, error: "Password must be at least 8 characters." };
+  }
+  for (const k of requiredBrandFields) {
     if (!input[k]?.trim()) {
       return { ok: false, error: `Please fill in your ${humanise(k)}.` };
     }
   }
 
-  // Service-role client: the visitor is unauthenticated and we've already
-  // validated input above. Bypassing RLS on this single insert path lets us
-  // accept applications without exposing the table to public inserts.
-  const sb = getAdminSupabase();
-  const { data, error } = await sb
+  const email = input.email.trim().toLowerCase();
+
+  // 2. Create the auth account. signUp returns an existing-user error if the
+  // email is already registered — surface that politely.
+  const sb = await getServerSupabase();
+  const { data: signupData, error: signupErr } = await sb.auth.signUp({
+    email,
+    password: input.password,
+  });
+  if (signupErr) {
+    if (signupErr.message.toLowerCase().includes("already")) {
+      return {
+        ok: false,
+        error: "An account with that email already exists. Log in at /brand-signin instead.",
+      };
+    }
+    return { ok: false, error: signupErr.message };
+  }
+  const newUserId = signupData.user?.id ?? null;
+
+  // 3. Insert the application linked to the new user. Use the service-role
+  // client because RLS on `applications` only allows anonymous INSERT (which
+  // would otherwise drop the applicant_user_id linkage).
+  const admin = getAdminSupabase();
+  const { data: app, error: appErr } = await admin
     .from("applications")
     .insert({
       brand_name: input.brandName.trim(),
@@ -47,17 +79,19 @@ export async function submitApplication(input: ApplicationInput): Promise<Applic
       monthly_inventory_estimate: input.monthlyInventoryEstimate.trim(),
       whatsapp_number: input.whatsappNumber.trim(),
       website: input.website?.trim() || null,
+      applicant_user_id: newUserId,
+      applicant_email: email,
     })
     .select("id")
     .single();
 
-  if (error) {
-    console.error("application insert failed", error);
-    return { ok: false, error: "We couldn't record your application. Please try again." };
+  if (appErr) {
+    console.error("application insert failed", appErr);
+    return { ok: false, error: "Your account was created but we couldn't record your application. Write to us at correspondence@theasofe.com so we can fix it." };
   }
 
   await notifyApplicationSubmitted({
-    id: data.id,
+    id: app.id,
     brand_name: input.brandName.trim(),
     founder_name: input.founderName.trim(),
     instagram_handle: input.instagramHandle.trim(),

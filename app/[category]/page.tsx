@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -10,8 +9,11 @@ import {
   HIDDEN_CATEGORY_SLUGS,
 } from "@/lib/queries";
 import ProductCard from "@/components/ProductCard";
-import CategoryFilters from "@/components/CategoryFilters";
+import FilterSidebar from "@/components/FilterSidebar";
+import SubcategoryNav from "@/components/SubcategoryNav";
 import { applyFilters, parseFilters } from "@/lib/filters";
+import { getSubcategories } from "@/lib/subcategories";
+import { getWishlistSlugs } from "@/lib/wishlist";
 
 export async function generateStaticParams() {
   const categories = await getCategories();
@@ -25,15 +27,6 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   return { title: c.name, description: c.description };
 }
 
-const categoryGround: Record<string, { bg: string; ink: string; eyebrow: string }> = {
-  womenswear: { bg: "var(--color-oxblood)",    ink: "var(--color-ground)", eyebrow: "var(--color-saffron-soft)" },
-  menswear:   { bg: "var(--color-cobalt)",     ink: "var(--color-ground)", eyebrow: "var(--color-saffron-soft)" },
-  bags:       { bg: "var(--color-terracotta)", ink: "var(--color-ground)", eyebrow: "var(--color-blush)" },
-  shoes:      { bg: "var(--color-emerald)",    ink: "var(--color-ground)", eyebrow: "var(--color-saffron-soft)" },
-  jewellery:  { bg: "var(--color-ink)",        ink: "var(--color-ground)", eyebrow: "var(--color-saffron-soft)" },
-  objects:    { bg: "var(--color-sage)",       ink: "var(--color-ink)",    eyebrow: "var(--color-emerald)"     },
-};
-
 export default async function CategoryPage({
   params,
   searchParams,
@@ -43,10 +36,11 @@ export default async function CategoryPage({
 }) {
   const [{ category }, sp] = await Promise.all([params, searchParams]);
   if (HIDDEN_CATEGORY_SLUGS.has(category)) notFound();
-  const [c, inCategory, brands] = await Promise.all([
+  const [c, inCategory, brands, wishlistSlugs] = await Promise.all([
     getCategory(category),
     getProductsByCategory(category),
     getBrands(),
+    getWishlistSlugs(),
   ]);
   if (!c) notFound();
 
@@ -55,7 +49,6 @@ export default async function CategoryPage({
     .map(slug => brandsBySlug.get(slug)!)
     .filter(Boolean);
 
-  // Filter facets are derived from the category's full set so options stay stable.
   const sizesRepresented = Array.from(new Set(inCategory.flatMap(p => p.sizes))).sort();
   const prices = inCategory.map(p => p.price);
   const priceBounds = prices.length
@@ -64,89 +57,67 @@ export default async function CategoryPage({
 
   const filters = parseFilters(sp);
   const filtered = applyFilters(inCategory, filters);
-
-  const ground = categoryGround[category] ?? { bg: "var(--color-cream)", ink: "var(--color-ink)", eyebrow: "var(--color-emerald)" };
+  const subcategories = getSubcategories(category);
 
   return (
     <>
-      {/* ─── Hero ────────────────────────────────────────────────── */}
-      <section style={{ backgroundColor: ground.bg, color: ground.ink }}>
-        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 grid lg:grid-cols-2 gap-10 items-stretch min-h-[42vh]">
-          <div className="flex flex-col justify-center py-16 lg:py-24">
-            <p className="eyebrow mb-6" style={{ color: ground.eyebrow }}>
-              {c.name} · {inCategory.length} pieces · {brandsRepresented.length} designers
-            </p>
-            <h1 className="display text-[clamp(2.4rem,5vw,4.8rem)] mb-6 max-w-[15ch]">
-              {c.name}.
-            </h1>
-            <p className="text-base lg:text-lg leading-relaxed max-w-md" style={{ color: ground.ink === "var(--color-ground)" ? "rgba(255,255,255,0.78)" : "var(--color-ink-soft)" }}>
-              {c.description}
-            </p>
-          </div>
-          <div className="relative min-h-[36vh] lg:min-h-[58vh]">
-            <Image
-              src={c.heroImage}
-              alt={c.name}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Filter strip ────────────────────────────────────────── */}
-      <CategoryFilters
-        brands={brandsRepresented}
-        sizes={sizesRepresented}
-        priceBounds={priceBounds}
-        current={filters}
-        totalCount={inCategory.length}
-        visibleCount={filtered.length}
+      <SubcategoryNav
+        category={category}
+        categoryName={c.name.toLowerCase()}
+        subcategories={subcategories}
       />
 
-      {/* ─── Grid ────────────────────────────────────────────────── */}
-      <section className="py-16 lg:py-24">
-        <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
-          {inCategory.length === 0 ? (
-            <p className="text-center py-24 text-sm" style={{ color: "var(--color-muted)" }}>
-              The first pieces in this department arrive shortly.
-            </p>
-          ) : filtered.length === 0 ? (
-            <p className="text-center py-24 text-sm" style={{ color: "var(--color-muted)" }}>
-              No pieces match these filters. Try widening your search.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 lg:gap-x-10 gap-y-14">
-              {filtered.map(p => (
-                <ProductCard key={p.slug} product={p} brand={brandsBySlug.get(p.brand)} />
-              ))}
-            </div>
-          )}
+      {/* Listing header — breadcrumb + title + count */}
+      <section style={{ backgroundColor: "var(--color-ground)" }}>
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 pt-8 lg:pt-12 pb-6 lg:pb-8">
+          <nav className="text-[10px] tracking-[0.22em] uppercase mb-4" style={{ color: "var(--color-muted)" }}>
+            <Link href="/" className="lux-link">Home</Link>
+            <span className="mx-3" aria-hidden>·</span>
+            <span style={{ color: "var(--color-ink)" }}>{c.name}</span>
+          </nav>
+          <h1 className="display text-[clamp(1.8rem,3.4vw,3rem)] leading-[1.04] tracking-[-0.01em]" style={{ color: "var(--color-ink)" }}>
+            {c.name}.
+          </h1>
+          <p className="text-sm mt-3 max-w-2xl leading-relaxed" style={{ color: "var(--color-ink-soft)" }}>
+            {c.description}
+          </p>
         </div>
       </section>
 
-      {/* ─── Designers in this department ──────────────────────────── */}
-      {brandsRepresented.length > 0 && (
-        <section className="py-16 lg:py-20 border-t" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-cream)" }}>
-          <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
-            <div className="text-center mb-12">
-              <p className="eyebrow mb-3" style={{ color: "var(--color-emerald)" }}>Designers in this department</p>
-              <h2 className="display text-2xl lg:text-4xl">Houses of {c.name.toLowerCase()}.</h2>
+      {/* Listing body — sidebar + grid */}
+      <section className="border-t" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-ground)" }}>
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-8 lg:py-12">
+          <div className="lg:grid lg:grid-cols-12 lg:gap-10">
+            <div className="lg:col-span-3">
+              <FilterSidebar
+                brands={brandsRepresented}
+                sizes={sizesRepresented}
+                priceBounds={priceBounds}
+                current={filters}
+                totalCount={inCategory.length}
+                visibleCount={filtered.length}
+              />
             </div>
-            <ul className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
-              {brandsRepresented.map(b => (
-                <li key={b!.slug}>
-                  <Link href={`/brands/${b!.slug}`} className="lux-link">
-                    <span className="serif text-xl lg:text-2xl" style={{ color: "var(--color-ink)" }}>{b!.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <div className="lg:col-span-9 mt-8 lg:mt-0">
+              {inCategory.length === 0 ? (
+                <p className="text-center py-24 text-sm" style={{ color: "var(--color-muted)" }}>
+                  The first pieces in this department arrive shortly.
+                </p>
+              ) : filtered.length === 0 ? (
+                <p className="text-center py-24 text-sm" style={{ color: "var(--color-muted)" }}>
+                  No pieces match these filters. Try widening your search.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 lg:gap-x-6 gap-y-12">
+                  {filtered.map(p => (
+                    <ProductCard key={p.slug} product={p} brand={brandsBySlug.get(p.brand)} inWishlist={wishlistSlugs.has(p.slug)} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
     </>
   );
 }

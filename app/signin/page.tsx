@@ -22,70 +22,62 @@ export default async function SignInPage({
   if (user) redirect(next || "/account");
 
   return (
-    <section className="min-h-[80vh] grid lg:grid-cols-2" style={{ backgroundColor: "var(--color-ground)" }}>
-      <div className="flex items-center justify-center px-6 lg:px-12 py-20">
-        <div className="w-full max-w-md">
-          {/* Audience switcher */}
-          <div className="grid grid-cols-2 mb-10 border" style={{ borderColor: "var(--color-rule)" }}>
-            <span
-              aria-current="page"
-              className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium"
-              style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}
-            >
-              Customer
-            </span>
-            <Link
-              href="/admin-signin"
-              className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium transition-colors hover:bg-[var(--color-cream)]"
-              style={{ color: "var(--color-ink)" }}
-            >
-              Staff
-            </Link>
-          </div>
-
-          <p className="eyebrow mb-6" style={{ color: "var(--color-oxblood)" }}>The House Door</p>
-          <h1 className="display text-4xl lg:text-5xl mb-4" style={{ color: "var(--color-ink)" }}>
-            Log in to Asofe.
-          </h1>
-          <p className="text-base leading-relaxed mb-10 max-w-sm" style={{ color: "var(--color-ink-soft)" }}>
-            Track your orders, save addresses, and keep a record of every piece you&apos;ve collected.
-            Log in with your email and password.
-          </p>
-
-          {error && (
-            <p className="mb-6 text-sm" style={{ color: "var(--color-oxblood)" }}>
-              {decodeURIComponent(error)}
-            </p>
-          )}
-
-          <SignInForm next={next ?? null} />
-
-          <div className="mt-12 pt-8 border-t text-[11px] tracking-[0.18em] uppercase" style={{ borderColor: "var(--color-rule)", color: "var(--color-muted)" }}>
-            <p>
-              Run a brand?{" "}
-              <Link href="/sellers" className="lux-link" style={{ color: "var(--color-ink)" }}>
-                Apply to sell on Asofe →
-              </Link>
-            </p>
-            <p className="mt-3">
-              Asofe staff?{" "}
-              <Link href="/admin-signin" className="lux-link" style={{ color: "var(--color-ink)" }}>
-                Staff log-in →
-              </Link>
-            </p>
-          </div>
+    <section
+      className="min-h-screen grid place-items-center px-6 py-20"
+      style={{ backgroundColor: "var(--color-ground)", color: "var(--color-ink)" }}
+    >
+      <div className="w-full max-w-sm">
+        {/* Audience switcher — three-way */}
+        <div className="grid grid-cols-3 mb-10 border" style={{ borderColor: "var(--color-rule)" }}>
+          <span
+            aria-current="page"
+            className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium"
+            style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}
+          >
+            Customer
+          </span>
+          <Link
+            href="/brand-signin"
+            className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium transition-colors hover:bg-[var(--color-cream)]"
+            style={{ color: "var(--color-ink)" }}
+          >
+            Brand
+          </Link>
+          <Link
+            href="/admin-signin"
+            className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium transition-colors hover:bg-[var(--color-cream)]"
+            style={{ color: "var(--color-ink)" }}
+          >
+            Staff
+          </Link>
         </div>
-      </div>
 
-      <div
-        className="hidden lg:block relative"
-        style={{
-          backgroundImage: "url(/asofe/hero-secondary.png)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-        aria-hidden
-      />
+        <p className="text-[10px] tracking-[0.22em] uppercase font-medium mb-8" style={{ color: "var(--color-oxblood)" }}>
+          Asofe · Customer
+        </p>
+        <h1 className="display text-3xl lg:text-4xl mb-3" style={{ color: "var(--color-ink)" }}>
+          Log in to Asofe.
+        </h1>
+        <p className="text-sm leading-relaxed mb-10" style={{ color: "var(--color-ink-soft)" }}>
+          Track your orders, save addresses, and keep a record of every piece you&apos;ve collected.
+          Log in with your email and password, or create an account to begin.
+        </p>
+
+        {error && (
+          <p className="mb-6 text-sm" style={{ color: "var(--color-oxblood)" }}>
+            {decodeURIComponent(error)}
+          </p>
+        )}
+
+        <SignInForm next={next ?? null} demoRole="customer" />
+
+        <p className="mt-10 text-[10px] tracking-[0.22em] uppercase" style={{ color: "var(--color-muted)" }}>
+          Run a brand?{" "}
+          <Link href="/sellers" className="lux-link" style={{ color: "var(--color-ink)" }}>
+            Apply to sell on Asofe →
+          </Link>
+        </p>
+      </div>
     </section>
   );
 }

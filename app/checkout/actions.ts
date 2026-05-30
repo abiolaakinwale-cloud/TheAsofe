@@ -43,15 +43,21 @@ export async function startCheckout(): Promise<CheckoutError | void> {
     return { ok: false, error: "Could not start your order. Please try again." };
   }
 
-  const items = bag.items.map(it => ({
-    order_id: order.id,
-    product_slug: it.slug,
-    brand_slug: it.product.brand,
-    name: it.product.name,
-    size: it.size,
-    qty: it.qty,
-    unit_price: it.product.price,
-  }));
+  const items = bag.items.map(it => {
+    // Snapshot the lead time at order time *only* if the line is genuinely
+    // backordered (product is made-to-order AND the size has no on-hand stock).
+    const isBackorder = !!it.product.madeToOrder && it.stock === 0;
+    return {
+      order_id: order.id,
+      product_slug: it.slug,
+      brand_slug: it.product.brand,
+      name: it.product.name,
+      size: it.size,
+      qty: it.qty,
+      unit_price: it.product.price,
+      lead_time_weeks: isBackorder ? it.product.leadTimeWeeks ?? null : null,
+    };
+  });
 
   const { error: itemsErr } = await sb.from("order_items").insert(items);
   if (itemsErr) {

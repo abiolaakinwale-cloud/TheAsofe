@@ -25,8 +25,8 @@ export default function TermsPage() {
                 or, where stated, dispatched from our Lagos atelier.
               </p>
               <p>
-                Our registered office is at 12 Awolowo Road, Ikoyi, Lagos. By placing an order through theasofe.com you agree to
-                the terms set out below.
+                Our registered office address is available on request from our customer-care team. By placing an
+                order through theasofe.com you agree to the terms set out below.
               </p>
             </>,
           },
@@ -93,8 +93,8 @@ export default function TermsPage() {
             heading: "9. Contact",
             body: <p>
               Questions about these terms? Write to{" "}
-              <a href="mailto:correspondance@theasofe.com" className="lux-link" style={{ color: "var(--color-oxblood)" }}>
-                correspondance@theasofe.com
+              <a href="mailto:correspondence@theasofe.com" className="lux-link" style={{ color: "var(--color-oxblood)" }}>
+                correspondence@theasofe.com
               </a>.
             </p>,
           },

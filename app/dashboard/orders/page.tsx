@@ -7,7 +7,7 @@ import { formatPrice } from "@/lib/data";
 export default async function DashboardOrdersPage() {
   const sb = await getServerSupabase();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect("/signin?next=/dashboard/orders");
+  if (!user) redirect("/brand-signin?next=/dashboard/orders");
   const { data: profile } = await sb.from("profiles").select("role, brand").eq("id", user.id).maybeSingle();
   if (!profile || (profile.role !== "seller" && profile.role !== "admin")) redirect("/dashboard");
   if (profile.role === "seller" && !profile.brand) redirect("/dashboard");

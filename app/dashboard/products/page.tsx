@@ -8,7 +8,7 @@ import { deleteProduct } from "./actions";
 export default async function DashboardProductsPage() {
   const sb = await getServerSupabase();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect("/signin?next=/dashboard/products");
+  if (!user) redirect("/brand-signin?next=/dashboard/products");
   const { data: profile } = await sb.from("profiles").select("role, brand").eq("id", user.id).maybeSingle();
   if (!profile || (profile.role !== "seller" && profile.role !== "admin")) redirect("/dashboard");
   if (profile.role === "seller" && !profile.brand) redirect("/dashboard");
@@ -31,6 +31,9 @@ export default async function DashboardProductsPage() {
           </h1>
         </div>
         <div className="flex flex-wrap gap-3">
+          <Link href="/dashboard/products/import-stock" className="px-7 py-3.5 text-[12px] tracking-[0.22em] uppercase font-medium border" style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}>
+            Bulk stock
+          </Link>
           <Link href="/dashboard/products/import" className="px-7 py-3.5 text-[12px] tracking-[0.22em] uppercase font-medium border" style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}>
             Bulk import
           </Link>

@@ -33,6 +33,9 @@ function parsePayload(formData: FormData, brand: string | null) {
   const published = formData.get("published") === "on";
   const newArrival = formData.get("new_arrival") === "on";
   const featured = formData.get("featured") === "on";
+  const madeToOrder = formData.get("made_to_order") === "on";
+  const leadTimeRaw = String(formData.get("lead_time_weeks") || "").trim();
+  const leadTimeWeeks = leadTimeRaw === "" ? null : Number(leadTimeRaw);
 
   const errors: string[] = [];
   if (!slug.match(/^[a-z0-9][a-z0-9-]+$/)) errors.push("Slug must be lowercase letters, numbers, and hyphens.");
@@ -47,12 +50,17 @@ function parsePayload(formData: FormData, brand: string | null) {
   const price = Number(priceStr);
   if (!Number.isFinite(price) || price < 0) errors.push("Price must be a non-negative number.");
   if (!brand) errors.push("Your account is not assigned to a brand yet.");
+  if (madeToOrder && (leadTimeWeeks === null || !Number.isFinite(leadTimeWeeks) || leadTimeWeeks <= 0)) {
+    errors.push("Lead time (weeks) is required when 'Made to order' is on.");
+  }
   if (errors.length) throw new Error(errors.join(" "));
 
   return {
     slug, name, category, subcategory, price: Math.round(price),
     description, colour, made_in: madeIn, sizes, composition, images,
     published, new_arrival: newArrival, featured,
+    made_to_order: madeToOrder,
+    lead_time_weeks: madeToOrder ? Math.round(leadTimeWeeks!) : null,
     brand: brand!,
     seller: `${brand}-direct`,
     currency: "GBP" as const,

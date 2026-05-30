@@ -10,6 +10,8 @@ type Row = {
   monthly_inventory_estimate: string;
   whatsapp_number: string;
   website: string | null;
+  applicant_email: string | null;
+  applicant_user_id: string | null;
   status: "pending" | "approved" | "rejected";
   created_at: string;
   reviewed_at: string | null;
@@ -75,6 +77,7 @@ function ApplicationRow({ a }: { a: Row }) {
       </div>
 
       <div className="lg:col-span-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        {a.applicant_email && <Detail k="Account" v={a.applicant_email} wrap />}
         <Detail k="Instagram" v={a.instagram_handle} />
         <Detail k="WhatsApp"  v={a.whatsapp_number} />
         <Detail k="Category"  v={a.product_category} />

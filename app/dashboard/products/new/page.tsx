@@ -8,7 +8,7 @@ import ProductFields from "../_components/ProductFields";
 export default async function NewProductPage() {
   const sb = await getServerSupabase();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect("/signin?next=/dashboard/products/new");
+  if (!user) redirect("/brand-signin?next=/dashboard/products/new");
   const { data: profile } = await sb.from("profiles").select("role, brand").eq("id", user.id).maybeSingle();
   if (profile?.role !== "seller" || !profile.brand) redirect("/dashboard");
 

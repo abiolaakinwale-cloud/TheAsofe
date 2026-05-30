@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { searchCatalog, getBrands } from "@/lib/queries";
+import { getWishlistSlugs } from "@/lib/wishlist";
 import ProductCard from "@/components/ProductCard";
 
 export const metadata: Metadata = {
@@ -17,9 +18,10 @@ export default async function SearchPage({
   const { q = "" } = await searchParams;
   const query = q.trim();
 
-  const [{ products, brands: brandHits }, allBrands] = await Promise.all([
+  const [{ products, brands: brandHits }, allBrands, wishlistSlugs] = await Promise.all([
     query ? searchCatalog(query) : Promise.resolve({ products: [], brands: [] }),
     getBrands(),
+    getWishlistSlugs(),
   ]);
   const brandsBySlug = new Map(allBrands.map(b => [b.slug, b]));
 
@@ -82,7 +84,7 @@ export default async function SearchPage({
                 </h2>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 lg:gap-x-10 gap-y-14">
                   {products.map(p => (
-                    <ProductCard key={p.slug} product={p} brand={brandsBySlug.get(p.brand)} />
+                    <ProductCard key={p.slug} product={p} brand={brandsBySlug.get(p.brand)} inWishlist={wishlistSlugs.has(p.slug)} />
                   ))}
                 </div>
               </section>

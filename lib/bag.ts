@@ -86,7 +86,11 @@ export async function getEnrichedBag(): Promise<EnrichedBag> {
     const p = productBySlug.get(r.slug);
     if (!p) continue; // dropped product
     const stock = stockBySlugSize.get(`${r.slug}|${r.size}`) ?? 0;
-    const cappedQty = Math.min(r.qty, Math.max(stock, 0));
+    // Made-to-order products can be ordered without on-hand stock.
+    const canBackorder = !!p.made_to_order && !!p.lead_time_weeks && p.lead_time_weeks > 0;
+    const cappedQty = canBackorder
+      ? Math.min(r.qty, MAX_QTY_PER_LINE)
+      : Math.min(r.qty, Math.max(stock, 0));
     if (cappedQty === 0) continue;
     const lineSubtotal = p.price * cappedQty;
     subtotal += lineSubtotal;
@@ -112,6 +116,8 @@ export async function getEnrichedBag(): Promise<EnrichedBag> {
         images: p.images,
         newArrival: p.new_arrival || undefined,
         featured: p.featured || undefined,
+        madeToOrder: p.made_to_order || undefined,
+        leadTimeWeeks: p.lead_time_weeks ?? undefined,
       },
       brand: brandBySlug.get(p.brand)
         ? {

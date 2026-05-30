@@ -15,8 +15,8 @@ const channels = [
   {
     label: "Client Care",
     desc: "Orders, shipping, returns, and any after-sale matters.",
-    detail: "correspondance@theasofe.com",
-    href: "mailto:correspondance@theasofe.com",
+    detail: "correspondence@theasofe.com",
+    href: "mailto:correspondence@theasofe.com",
     hours: "Monday – Friday · 09.00 – 18.00 WAT",
     ground: "var(--color-cobalt)",
   },
@@ -66,8 +66,8 @@ export default function ContactPage() {
           </div>
           <div className="text-base lg:text-lg leading-relaxed space-y-6" style={{ color: "var(--color-ink-soft)" }}>
             <div>
-              <p className="eyebrow mb-2" style={{ color: "var(--color-muted)" }}>Address</p>
-              <p className="display text-2xl">12 Awolowo Road<br />Ikoyi, Lagos 101233</p>
+              <p className="eyebrow mb-2" style={{ color: "var(--color-muted)" }}>Location</p>
+              <p className="display text-2xl">Lagos &amp; London</p>
             </div>
             <div>
               <p className="eyebrow mb-2" style={{ color: "var(--color-muted)" }}>Hours</p>
@@ -78,7 +78,7 @@ export default function ContactPage() {
               <p>
                 <a href="mailto:atelier@theasofe.com" className="lux-link" style={{ color: "var(--color-oxblood)" }}>
                   atelier@theasofe.com
-                </a>{" "}· +234 1 270 4400
+                </a>
               </p>
             </div>
           </div>

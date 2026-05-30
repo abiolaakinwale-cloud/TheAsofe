@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getBrand, getBrands, getProductsByBrand } from "@/lib/queries";
+import { getSiteSettings } from "@/lib/cms";
 import ProductCard from "@/components/ProductCard";
 
 export async function generateStaticParams() {
@@ -30,16 +31,18 @@ const brandGround: Record<string, string> = {
 
 export default async function BrandPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [brand, items, brands] = await Promise.all([
+  const [brand, items, brands, settings] = await Promise.all([
     getBrand(slug),
     getProductsByBrand(slug),
     getBrands(),
+    getSiteSettings(),
   ]);
   if (!brand) notFound();
   const ground = brandGround[slug] ?? "var(--color-cream)";
   const isDark = ground !== "var(--color-blush)" && ground !== "var(--color-saffron)" && ground !== "var(--color-sage)" && ground !== "var(--color-cream)";
   const ink = isDark ? "var(--color-ground)" : "var(--color-ink)";
   const eyebrowColour = isDark ? "var(--color-saffron-soft)" : "var(--color-oxblood)";
+  const isFeatured = settings.spotlight.enabled && settings.spotlight.brandSlug === slug;
 
   return (
     <>
@@ -59,6 +62,15 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
             <p className="text-base lg:text-lg leading-relaxed max-w-lg" style={{ color: isDark ? "rgba(255,255,255,0.75)" : "var(--color-ink-soft)" }}>
               {brand.story}
             </p>
+            {isFeatured && (
+              <Link
+                href={`/brands/${brand.slug}/feature`}
+                className="mt-8 inline-flex items-center gap-3 text-[11px] tracking-[0.22em] uppercase font-medium pb-1 border-b w-fit"
+                style={{ borderColor: eyebrowColour, color: eyebrowColour }}
+              >
+                Read the spotlight feature →
+              </Link>
+            )}
           </div>
           <div className="relative min-h-[60vh] lg:min-h-0">
             <Image

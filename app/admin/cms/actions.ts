@@ -46,6 +46,21 @@ export async function updateSiteSettings(formData: FormData) {
       label:   get(formData, "concierge.label"),
       href:    get(formData, "concierge.href"),
     },
+    images: {
+      sellersBand:      get(formData, "images.sellersBand"),
+      sellersHero:      get(formData, "images.sellersHero"),
+      conciergeFeature: get(formData, "images.conciergeFeature"),
+      stockistsFeature: get(formData, "images.stockistsFeature"),
+      signinSide:       get(formData, "images.signinSide"),
+    },
+    spotlight: {
+      enabled:          formData.get("spotlight.enabled") === "on",
+      brandSlug:        get(formData, "spotlight.brandSlug"),
+      eyebrow:          get(formData, "spotlight.eyebrow"),
+      editorialImage:   get(formData, "spotlight.editorialImage"),
+      quote:            get(formData, "spotlight.quote"),
+      quoteAttribution: get(formData, "spotlight.quoteAttribution"),
+    },
   };
 
   const sb = getAdminSupabase();

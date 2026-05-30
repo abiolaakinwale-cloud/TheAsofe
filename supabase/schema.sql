@@ -56,6 +56,13 @@ create table if not exists public.products (
 create index if not exists products_brand_idx    on public.products(brand);
 create index if not exists products_category_idx on public.products(category);
 
+-- Phase 4: made-to-order / backorders. When `made_to_order` is true, the product
+-- can be added to the bag even when its size has zero in-stock. `lead_time_weeks`
+-- is shown to the customer at point of purchase and snapshotted to order_items.
+alter table public.products
+  add column if not exists made_to_order   boolean not null default false,
+  add column if not exists lead_time_weeks int;
+
 -- ─── Auth-bound tables ─────────────────────────────────────────────────────
 
 -- profiles: 1:1 with auth.users, holds role + assigned brand
@@ -157,6 +164,11 @@ create table if not exists public.order_items (
 create index if not exists order_items_order_idx   on public.order_items(order_id);
 create index if not exists order_items_product_idx on public.order_items(product_slug);
 create index if not exists order_items_brand_idx   on public.order_items(brand_slug);
+
+-- Phase 4: snapshot the lead time at order time so a later product change
+-- doesn't rewrite history for an in-flight order. Null = in-stock at order.
+alter table public.order_items
+  add column if not exists lead_time_weeks int;
 
 -- RLS for Phase 1 tables
 alter table public.stock_levels enable row level security;
@@ -371,6 +383,49 @@ create policy "admin writes site images" on storage.objects
   using (bucket_id = 'site-images' and public.is_admin())
   with check (bucket_id = 'site-images' and public.is_admin());
 
+-- ─── Phase 5: newsletter subscriptions ─────────────────────────────────────
+
+create table if not exists public.newsletter_subscribers (
+  email        text primary key,
+  source       text,                  -- which page / context produced the signup
+  created_at   timestamptz not null default now()
+);
+
+alter table public.newsletter_subscribers enable row level security;
+
+drop policy if exists "anyone subscribes"          on public.newsletter_subscribers;
+drop policy if exists "admin reads subscribers"    on public.newsletter_subscribers;
+
+create policy "anyone subscribes" on public.newsletter_subscribers
+  for insert
+  to public
+  with check (true);
+
+create policy "admin reads subscribers" on public.newsletter_subscribers
+  for select using (public.is_admin());
+
+-- ─── Phase 4: wishlist (favourites) ────────────────────────────────────────
+
+create table if not exists public.wishlist (
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  product_slug text not null references public.products(slug) on delete cascade,
+  created_at   timestamptz not null default now(),
+  primary key (user_id, product_slug)
+);
+
+create index if not exists wishlist_user_idx on public.wishlist(user_id);
+
+alter table public.wishlist enable row level security;
+
+drop policy if exists "user reads own wishlist"  on public.wishlist;
+drop policy if exists "user writes own wishlist" on public.wishlist;
+
+create policy "user reads own wishlist" on public.wishlist
+  for select using (user_id = auth.uid());
+
+create policy "user writes own wishlist" on public.wishlist
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 -- ─── (existing) applications: seller onboarding submissions ────────────────
 -- applications: seller onboarding submissions
 create table if not exists public.applications (
@@ -388,7 +443,15 @@ create table if not exists public.applications (
   created_at                 timestamptz not null default now()
 );
 
-create index if not exists applications_status_idx on public.applications(status);
+-- Phase 3: link applications to the auth account created at sign-up so the
+-- applicant can see their status on /dashboard, and admin approval can flip
+-- their role without manual user-lookup.
+alter table public.applications
+  add column if not exists applicant_user_id uuid references auth.users(id) on delete set null,
+  add column if not exists applicant_email   text;
+
+create index if not exists applications_status_idx          on public.applications(status);
+create index if not exists applications_applicant_user_idx  on public.applications(applicant_user_id);
 
 -- ─── Auto-create a profile row when a user signs up ────────────────────────
 
@@ -504,10 +567,12 @@ create policy "admin reads profiles" on public.profiles
 create policy "admin writes profiles" on public.profiles
   for all using (public.is_admin()) with check (public.is_admin());
 
--- Applications: anonymous can insert; only admin can read/update
-drop policy if exists "anyone applies"        on public.applications;
-drop policy if exists "admin reads applications" on public.applications;
-drop policy if exists "admin updates applications" on public.applications;
+-- Applications: anonymous can insert; only admin can read/update; the applicant
+-- themselves can read their own row (to show status on /dashboard).
+drop policy if exists "anyone applies"                  on public.applications;
+drop policy if exists "admin reads applications"        on public.applications;
+drop policy if exists "admin updates applications"      on public.applications;
+drop policy if exists "applicant reads own application" on public.applications;
 
 create policy "anyone applies" on public.applications
   for insert
@@ -519,3 +584,6 @@ create policy "admin reads applications" on public.applications
 
 create policy "admin updates applications" on public.applications
   for update using (public.is_admin()) with check (public.is_admin());
+
+create policy "applicant reads own application" on public.applications
+  for select using (applicant_user_id = auth.uid());

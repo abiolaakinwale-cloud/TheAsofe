@@ -5,17 +5,25 @@ const customerCare = [
   { label: "Contact", href: "/contact" },
   { label: "Shipping & Delivery", href: "/shipping" },
   { label: "Returns", href: "/returns" },
+  { label: "Buyer Protection", href: "/returns" },
   { label: "Care Guide", href: "/care" },
   { label: "Authentication", href: "/authentication" },
   { label: "Size Guide", href: "/size-guide" },
 ];
 
 const company = [
-  { label: "Our Philosophy", href: "/philosophy" },
+  { label: "Our Mission", href: "/philosophy" },
   { label: "The Journal", href: "/editorial" },
   { label: "Sell on Asofe", href: "/sellers" },
+  { label: "Concierge", href: "/concierge" },
   { label: "Press", href: "/press" },
   { label: "Careers", href: "/careers" },
+];
+
+const socials = [
+  { label: "Instagram", href: "https://instagram.com/theasofe" },
+  { label: "TikTok",    href: "https://tiktok.com/@theasofe" },
+  { label: "Pinterest", href: "https://pinterest.com/theasofe" },
 ];
 
 const legal = [
@@ -67,15 +75,34 @@ export default function Footer() {
             ))}
           </ul>
         </div>
-        <div className="col-span-2 lg:col-span-2">
-          <p className="eyebrow mb-5" style={{ color: "rgba(255,255,255,0.45)" }}>Headquarters</p>
+        <div className="col-span-2 lg:col-span-1">
+          <p className="eyebrow mb-5" style={{ color: "rgba(255,255,255,0.45)" }}>Get in touch</p>
           <p className="display text-2xl lg:text-3xl mb-3 leading-tight">
-            12 Awolowo Road<br />Ikoyi, Lagos
+            Lagos &amp; London.
           </p>
           <p className="text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
-            By appointment only.<br />
-            <a href="mailto:correspondance@theasofe.com" className="lux-link">correspondance@theasofe.com</a>
+            Office address shared on request.<br />
+            <a href="mailto:correspondence@theasofe.com" className="lux-link">correspondence@theasofe.com</a>
           </p>
+        </div>
+
+        <div className="col-span-2 lg:col-span-1">
+          <p className="eyebrow mb-5" style={{ color: "rgba(255,255,255,0.45)" }}>Follow</p>
+          <ul className="space-y-3 text-sm">
+            {socials.map(s => (
+              <li key={s.href}>
+                <a
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="lux-link"
+                  style={{ color: "rgba(255,255,255,0.78)" }}
+                >
+                  {s.label} →
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 

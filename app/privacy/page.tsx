@@ -19,8 +19,8 @@ export default function PrivacyPage() {
           {
             heading: "1. Who is responsible",
             body: <p>
-              Asofe Limited is the data controller for personal information you share with us. Our registered office is at
-              12 Awolowo Road, Ikoyi, Lagos. You can reach our privacy team at{" "}
+              Asofe Limited is the data controller for personal information you share with us. Our registered office
+              address is available on request from our privacy team at{" "}
               <a href="mailto:privacy@theasofe.com" className="lux-link" style={{ color: "var(--color-oxblood)" }}>privacy@theasofe.com</a>.
             </p>,
           },

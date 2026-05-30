@@ -18,7 +18,11 @@ export async function proxy(request: NextRequest) {
 
   if (protectedPath && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = isAdminPath ? "/admin-signin" : "/signin";
+    url.pathname = isAdminPath
+      ? "/admin-signin"
+      : path.startsWith("/dashboard")
+        ? "/brand-signin"
+        : "/signin";
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }

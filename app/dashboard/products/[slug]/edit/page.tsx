@@ -10,7 +10,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
   const { slug } = await params;
   const sb = await getServerSupabase();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect(`/signin?next=/dashboard/products/${slug}/edit`);
+  if (!user) redirect(`/brand-signin?next=/dashboard/products/${slug}/edit`);
   const { data: profile } = await sb.from("profiles").select("role, brand").eq("id", user.id).maybeSingle();
   if (profile?.role !== "seller" || !profile.brand) redirect("/dashboard");
 
@@ -53,6 +53,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
             published: product.published,
             new_arrival: product.new_arrival,
             featured: product.featured,
+            made_to_order: product.made_to_order,
+            lead_time_weeks: product.lead_time_weeks,
           }}
         />
         <div className="pt-4 flex gap-4 flex-wrap">

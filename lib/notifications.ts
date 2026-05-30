@@ -4,7 +4,7 @@ import { formatPrice } from "./data";
 
 // Sender. Swap to onboarding@theasofe.com after the domain is verified in Resend.
 const FROM = "Asofe <orders@resend.dev>";
-const ADMIN_EMAIL = "correspondance@theasofe.com";
+const ADMIN_EMAIL = "correspondence@theasofe.com";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://theasofe.vercel.app";
 
 type Email = { to: string | string[]; subject: string; text: string; replyTo?: string };

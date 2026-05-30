@@ -12,7 +12,9 @@ import {
 } from "@/lib/queries";
 import { formatPrice } from "@/lib/data";
 import { getStock } from "@/lib/bag";
+import { getWishlistSlugs } from "@/lib/wishlist";
 import AddToBag from "./_components/AddToBag";
+import ProductCard from "@/components/ProductCard";
 
 export async function generateStaticParams() {
   const products = await getProducts();
@@ -35,13 +37,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await getProduct(slug);
   if (!product) notFound();
 
-  const [brand, category, related, sellers, stock] = await Promise.all([
+  const [brand, category, related, sellers, stock, wishlistSlugs] = await Promise.all([
     getBrand(product.brand),
     getCategory(product.category),
     getProductsByBrand(product.brand),
     getSellers(),
     getStock(slug),
+    getWishlistSlugs(),
   ]);
+  const inWishlist = wishlistSlugs.has(slug);
   const seller = sellers.find(s => s.slug === product.seller);
   const more = related.filter(p => p.slug !== product.slug).slice(0, 4);
 
@@ -109,7 +113,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               {product.description}
             </p>
 
-            <AddToBag productSlug={product.slug} sizes={product.sizes} stock={stock} />
+            <AddToBag
+              productSlug={product.slug}
+              sizes={product.sizes}
+              stock={stock}
+              madeToOrder={product.madeToOrder}
+              leadTimeWeeks={product.leadTimeWeeks}
+              inWishlist={inWishlist}
+            />
 
             {/* Seller attribution */}
             {seller && (
@@ -158,16 +169,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 lg:gap-x-10 gap-y-14">
               {more.map(p => (
-                <Link key={p.slug} href={`/products/${p.slug}`} className="group block">
-                  <div className="relative aspect-[4/5] mb-4 overflow-hidden" style={{ backgroundColor: "var(--color-ground)" }}>
-                    <Image src={p.images[0]} alt={p.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover product-image" />
-                  </div>
-                  <p className="eyebrow mb-1" style={{ color: "var(--color-muted)" }}>{brand?.name}</p>
-                  <div className="flex items-start justify-between gap-4">
-                    <p className="serif text-base leading-snug">{p.name}</p>
-                    <p className="text-sm tabular-nums whitespace-nowrap" style={{ color: "var(--color-ink-soft)" }}>{formatPrice(p.price)}</p>
-                  </div>
-                </Link>
+                <ProductCard
+                  key={p.slug}
+                  product={p}
+                  brand={brand ?? undefined}
+                  inWishlist={wishlistSlugs.has(p.slug)}
+                />
               ))}
             </div>
           </div>

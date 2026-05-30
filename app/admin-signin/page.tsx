@@ -31,14 +31,21 @@ export default async function AdminSignInPage({
       style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}
     >
       <div className="w-full max-w-sm">
-        {/* Audience switcher — mirror of /signin */}
-        <div className="grid grid-cols-2 mb-10 border" style={{ borderColor: "rgba(255,255,255,0.25)" }}>
+        {/* Audience switcher — three-way */}
+        <div className="grid grid-cols-3 mb-10 border" style={{ borderColor: "rgba(255,255,255,0.25)" }}>
           <Link
             href="/signin"
             className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium transition-colors hover:bg-[rgba(255,255,255,0.06)]"
             style={{ color: "rgba(255,255,255,0.7)" }}
           >
             Customer
+          </Link>
+          <Link
+            href="/brand-signin"
+            className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium transition-colors hover:bg-[rgba(255,255,255,0.06)]"
+            style={{ color: "rgba(255,255,255,0.7)" }}
+          >
+            Brand
           </Link>
           <span
             aria-current="page"
@@ -65,7 +72,7 @@ export default async function AdminSignInPage({
           </p>
         )}
 
-        <SignInForm next={next || "/admin"} variant="dark" />
+        <SignInForm next={next || "/admin"} variant="dark" demoRole="staff" />
 
         <p className="mt-10 text-[10px] tracking-[0.22em] uppercase" style={{ color: "rgba(255,255,255,0.45)" }}>
           Customer account? <a href="/signin" className="underline">Log in over here →</a>

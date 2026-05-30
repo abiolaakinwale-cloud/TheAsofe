@@ -23,6 +23,8 @@ type ProductRow = {
   images: string[];
   new_arrival: boolean;
   featured: boolean;
+  made_to_order?: boolean;
+  lead_time_weeks?: number | null;
 };
 
 type BrandRow = {
@@ -59,6 +61,8 @@ const toProduct = (r: ProductRow): Product => ({
   images: r.images,
   newArrival: r.new_arrival || undefined,
   featured: r.featured || undefined,
+  madeToOrder: r.made_to_order || undefined,
+  leadTimeWeeks: r.lead_time_weeks ?? undefined,
 });
 
 const toBrand = (r: BrandRow): Brand => ({
@@ -119,7 +123,7 @@ export async function getProducts(): Promise<Product[]> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -153,7 +157,7 @@ export async function getProduct(slug: string): Promise<Product | null> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -166,7 +170,7 @@ export async function getProductsByCategory(slug: string): Promise<Product[]> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
     )
     .eq("category", slug)
     .order("name");
@@ -180,7 +184,7 @@ export async function getProductsByCategories(slugs: string[]): Promise<Product[
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
     )
     .in("category", slugs)
     .order("name");
@@ -188,12 +192,32 @@ export async function getProductsByCategories(slugs: string[]): Promise<Product[
   return (data ?? []).map(toProduct);
 }
 
+// Match products whose stored subcategory matches any of the given URL-style
+// slugs, regardless of parent category. Uses a normalised comparison so stored
+// values like "Suits & Blazers" still match the slug "suits-blazers".
+export async function getProductsBySubcategories(subSlugs: string[]): Promise<Product[]> {
+  if (subSlugs.length === 0) return [];
+  const sb = getAnonSupabase();
+  const { data, error } = await sb
+    .from("products")
+    .select(
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
+    )
+    .not("subcategory", "is", null)
+    .order("name");
+  if (error) throw error;
+  const normalise = (v: string | null | undefined) =>
+    (v ?? "").toLowerCase().replace(/[&]/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const targets = new Set(subSlugs.map(normalise));
+  return (data ?? []).filter(r => targets.has(normalise(r.subcategory))).map(toProduct);
+}
+
 export async function getProductsByBrand(slug: string): Promise<Product[]> {
   const sb = getAnonSupabase();
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
     )
     .eq("brand", slug)
     .order("name");
@@ -206,7 +230,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
     )
     .eq("featured", true)
     .order("name");
@@ -226,7 +250,7 @@ export async function searchCatalog(qRaw: string): Promise<{ products: Product[]
   const [productRes, brandRes] = await Promise.all([
     sb.from("products")
       .select(
-        "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured"
+        "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
       )
       .or(`name.ilike.${pattern},description.ilike.${pattern},colour.ilike.${pattern}`)
       .limit(40),
@@ -250,7 +274,7 @@ export async function getNewArrivals(): Promise<Product[]> {
   const { data, error } = await sb
     .from("products")
     .select(
-      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured"
+      "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks"
     )
     .eq("new_arrival", true)
     .order("name");

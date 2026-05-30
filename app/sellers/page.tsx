@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import ApplicationForm from "./_components/ApplicationForm";
 import Reveal, { Stagger, StaggerItem } from "./_components/Reveal";
+import { getSiteSettings } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "For Brands — Apply to Asofe",
@@ -11,10 +12,11 @@ export const metadata: Metadata = {
     "Asofe is the UK fulfilment and diaspora commerce platform for Nigerian fashion brands. Apply to join.",
 };
 
-export default function SellersPage() {
+export default async function SellersPage() {
+  const settings = await getSiteSettings();
   return (
     <>
-      <Hero />
+      <Hero image={settings.images.sellersHero} />
       <TrustStrip />
       <HowItWorks />
       <WhySell />
@@ -27,7 +29,7 @@ export default function SellersPage() {
 
 // ─── Hero ────────────────────────────────────────────────────────────────────
 
-function Hero() {
+function Hero({ image }: { image: string }) {
   return (
     <section className="relative" style={{ backgroundColor: "var(--color-ground)" }}>
       <div className="max-w-[100rem] mx-auto px-6 lg:px-12 grid lg:grid-cols-12 gap-10 lg:gap-16 items-center lg:min-h-[760px] py-16 lg:py-20">
@@ -80,7 +82,7 @@ function Hero() {
           <Reveal className="absolute inset-0">
             <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: "var(--color-cream)" }}>
               <Image
-                src="/asofe/sellers-hero.png"
+                src={image}
                 alt="An Asofe partner brand model in studio"
                 fill
                 priority

@@ -28,7 +28,7 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
 
   const { data: items } = await sb
     .from("order_items")
-    .select("id, product_slug, brand_slug, name, size, qty, unit_price")
+    .select("id, product_slug, brand_slug, name, size, qty, unit_price, lead_time_weeks")
     .eq("order_id", id);
 
   // Look up product images via anon client (catalogue is public).
@@ -102,6 +102,11 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
                     <p className="text-xs mt-1" style={{ color: "var(--color-muted)" }}>
                       {it.brand_slug.replace(/-/g, " ")} · Size {it.size} · Qty {it.qty}
                     </p>
+                    {it.lead_time_weeks && (
+                      <p className="text-[10px] tracking-[0.18em] uppercase mt-2" style={{ color: "var(--color-emerald)" }}>
+                        Made to order · ships in {it.lead_time_weeks} {it.lead_time_weeks === 1 ? "week" : "weeks"}
+                      </p>
+                    )}
                   </div>
                   <p className="text-sm tabular-nums" style={{ color: "var(--color-ink)" }}>
                     {formatPrice(it.unit_price * it.qty, order.currency)}
@@ -124,7 +129,7 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
 
           <p className="mt-10 text-xs leading-relaxed" style={{ color: "var(--color-muted)" }}>
             For questions about this order, write to{" "}
-            <a className="lux-link" href="mailto:correspondance@theasofe.com">correspondance@theasofe.com</a>{" "}
+            <a className="lux-link" href="mailto:correspondence@theasofe.com">correspondence@theasofe.com</a>{" "}
             quoting <span className="font-mono">{order.id.slice(0, 8)}</span>.
           </p>
         </aside>
