@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { getCategories } from "@/lib/queries";
 import { bagCount } from "@/lib/bag";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, DEFAULT_OG_IMAGE } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -23,12 +24,48 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Asofe — A House of Luxury",
-    template: "%s | Asofe",
+    default: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    template: `%s | ${SITE_NAME}`,
   },
-  description:
-    "A curated marketplace of independent African luxury houses. Aso oke, bazin riche, kente, mud cloth — ready-to-wear, leather goods, and jewellery.",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "African luxury", "African fashion", "aso oke", "bazin riche", "kente",
+    "mud cloth", "Ankara", "African designers", "luxury marketplace",
+    "ready-to-wear", "African leather goods", "African jewellery",
+  ],
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    locale: "en_GB",
+    images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: SITE_NAME }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

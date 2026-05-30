@@ -13,6 +13,7 @@ import {
 import { formatPrice } from "@/lib/data";
 import { getStock } from "@/lib/bag";
 import { getWishlistSlugs } from "@/lib/wishlist";
+import { SITE_URL, SITE_NAME, absoluteUrl } from "@/lib/site";
 import AddToBag from "./_components/AddToBag";
 import ProductCard from "@/components/ProductCard";
 
@@ -26,9 +27,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const p = await getProduct(slug);
   if (!p) return {};
   const brand = await getBrand(p.brand);
+  const title = `${p.name} — ${brand?.name ?? SITE_NAME}`;
+  const url = `${SITE_URL}/products/${p.slug}`;
+  const ogImage = p.images?.[0] ? absoluteUrl(p.images[0]) : undefined;
   return {
-    title: `${p.name} — ${brand?.name ?? ""}`,
+    title,
     description: p.description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      title,
+      description: p.description,
+      url,
+      siteName: SITE_NAME,
+      images: ogImage ? [{ url: ogImage, alt: p.name }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: p.description,
+      images: ogImage ? [ogImage] : undefined,
+    },
   };
 }
 
@@ -49,8 +68,41 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const seller = sellers.find(s => s.slug === product.seller);
   const more = related.filter(p => p.slug !== product.slug).slice(0, 4);
 
+  const totalStock = Object.values(stock).reduce((sum, n) => sum + (Number(n) || 0), 0);
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description,
+    image: product.images.map(img => absoluteUrl(img)),
+    sku: product.slug,
+    ...(brand && { brand: { "@type": "Brand", name: brand.name } }),
+    ...(category && { category: category.name }),
+    offers: {
+      "@type": "Offer",
+      url: `${SITE_URL}/products/${product.slug}`,
+      priceCurrency: product.currency,
+      price: product.price,
+      availability: totalStock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      itemCondition: "https://schema.org/NewCondition",
+      ...(brand && { seller: { "@type": "Organization", name: brand.name } }),
+    },
+  };
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+      ...(category ? [{ "@type": "ListItem", position: 2, name: category.name, item: `${SITE_URL}/${category.slug}` }] : []),
+      ...(brand ? [{ "@type": "ListItem", position: category ? 3 : 2, name: brand.name, item: `${SITE_URL}/brands/${brand.slug}` }] : []),
+      { "@type": "ListItem", position: (category ? 1 : 0) + (brand ? 1 : 0) + 2, name: product.name, item: `${SITE_URL}/products/${product.slug}` },
+    ],
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       {/* ─── Breadcrumb ──────────────────────────────────────────── */}
       <nav className="border-b" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-ground)" }}>
         <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-4 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase" style={{ color: "var(--color-muted)" }}>

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getJournalPost, getPublishedJournalPosts } from "@/lib/cms";
 import { getBrand } from "@/lib/queries";
+import { SITE_URL, SITE_NAME, absoluteUrl } from "@/lib/site";
 
 export async function generateStaticParams() {
   const posts = await getPublishedJournalPosts();
@@ -14,9 +15,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const post = await getJournalPost(slug);
   if (!post || !post.published) return {};
+  const url = `${SITE_URL}/editorial/${post.slug}`;
+  const image = post.heroImage ? absoluteUrl(post.heroImage) : undefined;
   return {
     title: post.title,
     description: post.excerpt ?? undefined,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "article",
+      title: post.title,
+      description: post.excerpt ?? undefined,
+      url,
+      siteName: SITE_NAME,
+      images: image ? [{ url: image, alt: post.title }] : undefined,
+      publishedTime: post.publishedAt ?? undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.excerpt ?? undefined,
+      images: image ? [image] : undefined,
+    },
   };
 }
 
@@ -28,8 +47,25 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
   const brand = post.brand ? await getBrand(post.brand) : null;
   const paragraphs = post.body.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
 
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.excerpt ?? undefined,
+    image: post.heroImage ? [absoluteUrl(post.heroImage)] : undefined,
+    datePublished: post.publishedAt ?? undefined,
+    author: { "@type": "Organization", name: SITE_NAME },
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/asofe/hero-main.png` },
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": `${SITE_URL}/editorial/${post.slug}` },
+  };
+
   return (
     <article>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       {/* Hero */}
       <section className="relative" style={{ backgroundColor: "var(--color-ink)" }}>
         <div className="relative aspect-[16/9] lg:aspect-[21/9]">

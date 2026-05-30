@@ -6,6 +6,7 @@ import { getBrand, getBrands, getProductsByBrand } from "@/lib/queries";
 import { getSiteSettings } from "@/lib/cms";
 import { getWishlistSlugs } from "@/lib/wishlist";
 import { paginate } from "@/lib/pagination";
+import { SITE_URL, SITE_NAME, absoluteUrl } from "@/lib/site";
 import ProductCard from "@/components/ProductCard";
 import Pagination from "@/components/Pagination";
 
@@ -18,7 +19,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const b = await getBrand(slug);
   if (!b) return {};
-  return { title: b.name, description: b.tagline };
+  const url = `${SITE_URL}/brands/${b.slug}`;
+  const image = b.heroImage ? absoluteUrl(b.heroImage) : undefined;
+  return {
+    title: b.name,
+    description: b.tagline,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "profile",
+      title: `${b.name} — ${SITE_NAME}`,
+      description: b.tagline,
+      url,
+      siteName: SITE_NAME,
+      images: image ? [{ url: image, alt: b.name }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${b.name} — ${SITE_NAME}`,
+      description: b.tagline,
+      images: image ? [image] : undefined,
+    },
+  };
 }
 
 const brandGround: Record<string, string> = {
@@ -50,6 +71,17 @@ export default async function BrandPage({
   if (!brand) notFound();
   const pageData = paginate(items, sp.page);
   const ground = brandGround[slug] ?? "var(--color-cream)";
+
+  const brandSchema = {
+    "@context": "https://schema.org",
+    "@type": "Brand",
+    name: brand.name,
+    description: brand.story || brand.tagline,
+    url: `${SITE_URL}/brands/${brand.slug}`,
+    logo: brand.heroImage ? absoluteUrl(brand.heroImage) : undefined,
+    foundingDate: brand.founded ? String(brand.founded) : undefined,
+    foundingLocation: brand.origin ? { "@type": "Place", name: brand.origin } : undefined,
+  };
   const isDark = ground !== "var(--color-blush)" && ground !== "var(--color-saffron)" && ground !== "var(--color-sage)" && ground !== "var(--color-cream)";
   const ink = isDark ? "var(--color-ground)" : "var(--color-ink)";
   const eyebrowColour = isDark ? "var(--color-saffron-soft)" : "var(--color-oxblood)";
@@ -57,6 +89,7 @@ export default async function BrandPage({
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(brandSchema) }} />
       {/* ─── Atelier portrait ────────────────────────────────────── */}
       <section style={{ backgroundColor: ground, color: ink }}>
         <div className="max-w-[100rem] mx-auto px-6 lg:px-12 grid lg:grid-cols-2 gap-12 lg:gap-20 min-h-[70vh] items-stretch">
