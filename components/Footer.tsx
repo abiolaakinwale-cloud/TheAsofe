@@ -5,7 +5,7 @@ const customerCare = [
   { label: "Contact", href: "/contact" },
   { label: "Shipping & Delivery", href: "/shipping" },
   { label: "Returns", href: "/returns" },
-  { label: "Buyer Protection", href: "/returns" },
+  { label: "Buyer Protection", href: "/buyer-protection" },
   { label: "Care Guide", href: "/care" },
   { label: "Authentication", href: "/authentication" },
   { label: "Size Guide", href: "/size-guide" },
@@ -103,6 +103,18 @@ export default function Footer() {
               </li>
             ))}
           </ul>
+        </div>
+      </div>
+
+      {/* Trading info — UK Companies Act 2006 s.82 disclosure */}
+      <div className="border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-8 text-[11px] leading-relaxed tracking-wide" style={{ color: "rgba(255,255,255,0.45)" }}>
+          <p className="max-w-3xl">
+            Asofe is a trading name of <span style={{ color: "rgba(255,255,255,0.72)" }}>Kadd Consulting Limited</span>,
+            a company registered in England and Wales · Company number{" "}
+            <span style={{ color: "rgba(255,255,255,0.72)" }}>15467682</span>{" "}
+            · Registered office: 33 Lansbury Road, Newton Leys, Bletchley, Bucks, United Kingdom, MK3 5QP.
+          </p>
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { registerAsBrand, type BrandRegistrationInput } from "../actions";
+import { submitBrandApplication, type BrandApplicationInput } from "../actions";
 
 const productCategories = [
   "Womenswear",
@@ -23,10 +23,8 @@ const inventoryBands = [
   "400+ pieces / month",
 ];
 
-const empty: BrandRegistrationInput & { passwordConfirm: string } = {
+const empty: BrandApplicationInput = {
   email: "",
-  password: "",
-  passwordConfirm: "",
   brandName: "",
   founderName: "",
   instagramHandle: "",
@@ -49,19 +47,11 @@ export default function ApplicationForm() {
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus({ kind: "idle" });
-    if (values.password !== values.passwordConfirm) {
-      setStatus({ kind: "error", msg: "Passwords don't match." });
-      return;
-    }
-    const { passwordConfirm: _confirm, ...payload } = values;
-    void _confirm;
     startTransition(async () => {
-      const result = await registerAsBrand(payload);
+      const result = await submitBrandApplication(values);
       if (result.ok) {
         setStatus({ kind: "ok" });
         setValues(empty);
-        // Soft-refresh so any session change is picked up (signUp may issue a
-        // session cookie depending on Supabase confirm-email setting).
         router.refresh();
       } else {
         setStatus({ kind: "error", msg: result.error });
@@ -77,45 +67,20 @@ export default function ApplicationForm() {
           Thank you — your application is with our curation team.
         </h3>
         <p className="text-base leading-relaxed max-w-lg" style={{ color: "var(--color-ink-soft)" }}>
-          Your account has been created. Log in any time to see the status of your application; we&apos;ll write
-          when it&apos;s reviewed, typically within five working days.
+          We&apos;ll be in touch within five working days. If accepted, you&apos;ll receive a login email to set up your atelier account and upload your first pieces.
         </p>
-        <div className="flex flex-wrap gap-4 pt-2">
-          <Link href="/brand-signin" className="px-8 py-3 text-[12px] tracking-[0.22em] uppercase font-medium" style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}>
-            Log in to your account →
-          </Link>
-        </div>
+        <p className="text-sm leading-relaxed" style={{ color: "var(--color-muted)" }}>
+          Questions in the meantime? Write to{" "}
+          <a className="lux-link" href="mailto:correspondence@theasofe.com" style={{ color: "var(--color-ink)" }}>correspondence@theasofe.com</a>.
+        </p>
       </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="grid gap-6 lg:gap-7" noValidate>
-      {/* Account */}
       <div>
-        <p className="eyebrow mb-5" style={{ color: "var(--color-oxblood)" }}>1 · Create your account</p>
-        <div className="grid sm:grid-cols-2 gap-6 lg:gap-7">
-          <Field label="Email" required>
-            <Input value={values.email} onChange={v => update("email", v)} type="email" autoComplete="email" placeholder="you@yourbrand.com" />
-          </Field>
-          <Field label="Password" required hint="At least 8 characters">
-            <Input value={values.password} onChange={v => update("password", v)} type="password" autoComplete="new-password" />
-          </Field>
-        </div>
-        <div className="mt-6 lg:mt-7">
-          <Field label="Confirm password" required>
-            <Input value={values.passwordConfirm} onChange={v => update("passwordConfirm", v)} type="password" autoComplete="new-password" />
-          </Field>
-        </div>
-        <p className="text-xs mt-3" style={{ color: "var(--color-muted)" }}>
-          Already have an account?{" "}
-          <Link href="/brand-signin" className="lux-link" style={{ color: "var(--color-ink)" }}>Log in here →</Link>
-        </p>
-      </div>
-
-      {/* Brand details */}
-      <div className="pt-6 border-t" style={{ borderColor: "var(--color-rule)" }}>
-        <p className="eyebrow mb-5" style={{ color: "var(--color-oxblood)" }}>2 · About your brand</p>
+        <p className="eyebrow mb-5" style={{ color: "var(--color-oxblood)" }}>Brand & contact</p>
         <div className="grid sm:grid-cols-2 gap-6 lg:gap-7">
           <Field label="Brand name" required>
             <Input value={values.brandName} onChange={v => update("brandName", v)} autoComplete="organization" />
@@ -126,11 +91,20 @@ export default function ApplicationForm() {
         </div>
 
         <div className="grid sm:grid-cols-2 gap-6 lg:gap-7 mt-6 lg:mt-7">
-          <Field label="Instagram handle" required hint="e.g. @atelier.adunni">
-            <Input value={values.instagramHandle} onChange={v => update("instagramHandle", v)} placeholder="@yourbrand" />
+          <Field label="Email" required hint="We'll write back here">
+            <Input value={values.email} onChange={v => update("email", v)} type="email" autoComplete="email" placeholder="you@yourbrand.com" />
           </Field>
           <Field label="WhatsApp number" required hint="Include your country code">
             <Input value={values.whatsappNumber} onChange={v => update("whatsappNumber", v)} placeholder="+234 803 ..." inputMode="tel" />
+          </Field>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-6 lg:gap-7 mt-6 lg:mt-7">
+          <Field label="Instagram handle" required hint="e.g. @atelier.adunni">
+            <Input value={values.instagramHandle} onChange={v => update("instagramHandle", v)} placeholder="@yourbrand" />
+          </Field>
+          <Field label="Website" hint="Optional">
+            <Input value={values.website || ""} onChange={v => update("website", v)} placeholder="https://" inputMode="url" />
           </Field>
         </div>
 
@@ -142,12 +116,6 @@ export default function ApplicationForm() {
             <Select value={values.monthlyInventoryEstimate} onChange={v => update("monthlyInventoryEstimate", v)} options={inventoryBands} placeholder="Approximate volume" />
           </Field>
         </div>
-
-        <div className="mt-6 lg:mt-7">
-          <Field label="Website" hint="Optional">
-            <Input value={values.website || ""} onChange={v => update("website", v)} placeholder="https://" inputMode="url" />
-          </Field>
-        </div>
       </div>
 
       <div className="pt-6 flex items-center gap-6 flex-wrap">
@@ -157,10 +125,12 @@ export default function ApplicationForm() {
           className="px-8 py-4 text-[12px] tracking-[0.22em] uppercase font-medium transition-opacity disabled:opacity-50"
           style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}
         >
-          {pending ? "Submitting…" : "Create account & apply"}
+          {pending ? "Submitting…" : "Submit application"}
         </button>
         <p className="text-xs leading-relaxed max-w-sm" style={{ color: "var(--color-muted)" }}>
-          We review every application personally. Expect a reply within five working days.
+          We review every application personally. If accepted, you&apos;ll receive a login email to set up your account.
+          Already onboarded?{" "}
+          <Link href="/brand-signin" className="lux-link" style={{ color: "var(--color-ink)" }}>Log in →</Link>
         </p>
       </div>
 

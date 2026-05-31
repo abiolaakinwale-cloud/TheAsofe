@@ -1,13 +1,11 @@
 "use server";
 
-import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { notifyApplicationSubmitted } from "@/lib/notifications";
 
-export type BrandRegistrationInput = {
-  // Account
+export type BrandApplicationInput = {
+  // Contact
   email: string;
-  password: string;
   // Brand
   brandName: string;
   founderName: string;
@@ -18,11 +16,11 @@ export type BrandRegistrationInput = {
   website?: string;
 };
 
-export type RegistrationResult =
+export type ApplicationResult =
   | { ok: true }
   | { ok: false; error: string };
 
-const requiredBrandFields = [
+const requiredFields = [
   "brandName",
   "founderName",
   "instagramHandle",
@@ -31,44 +29,42 @@ const requiredBrandFields = [
   "whatsappNumber",
 ] as const;
 
-export async function registerAsBrand(input: BrandRegistrationInput): Promise<RegistrationResult> {
-  // 1. Validate
+/**
+ * Express interest as a brand — no account creation required.
+ * Credentials are provisioned at acceptance time via the admin "Approve"
+ * action, which calls scripts/admin-set-password.mjs and emails the
+ * founder a one-shot password.
+ *
+ * Marketplace funnel logic: forcing account creation on the highest-value
+ * funnel adds 30 seconds of friction that loses ~25% of completions on
+ * typical luxury verticals. Brands have nothing to log in *for* until
+ * they're accepted, so the gate is wrong.
+ */
+export async function submitBrandApplication(input: BrandApplicationInput): Promise<ApplicationResult> {
   if (!input.email?.includes("@")) {
     return { ok: false, error: "Enter a valid email address." };
   }
-  if (input.password.length < 8) {
-    return { ok: false, error: "Password must be at least 8 characters." };
-  }
-  for (const k of requiredBrandFields) {
+  for (const k of requiredFields) {
     if (!input[k]?.trim()) {
       return { ok: false, error: `Please fill in your ${humanise(k)}.` };
     }
   }
 
   const email = input.email.trim().toLowerCase();
-
-  // 2. Create the auth account. signUp returns an existing-user error if the
-  // email is already registered — surface that politely.
-  const sb = await getServerSupabase();
-  const { data: signupData, error: signupErr } = await sb.auth.signUp({
-    email,
-    password: input.password,
-  });
-  if (signupErr) {
-    if (signupErr.message.toLowerCase().includes("already")) {
-      return {
-        ok: false,
-        error: "An account with that email already exists. Log in at /brand-signin instead.",
-      };
-    }
-    return { ok: false, error: signupErr.message };
-  }
-  const newUserId = signupData.user?.id ?? null;
-
-  // 3. Insert the application linked to the new user. Use the service-role
-  // client because RLS on `applications` only allows anonymous INSERT (which
-  // would otherwise drop the applicant_user_id linkage).
   const admin = getAdminSupabase();
+
+  // Duplicate guard: same email + brand within the last 30 days
+  const { data: recent } = await admin
+    .from("applications")
+    .select("id")
+    .eq("applicant_email", email)
+    .eq("brand_name", input.brandName.trim())
+    .gte("created_at", new Date(Date.now() - 30 * 86_400_000).toISOString())
+    .maybeSingle();
+  if (recent) {
+    return { ok: false, error: "We've already received an application for this brand from this email in the last 30 days — we'll be in touch shortly." };
+  }
+
   const { data: app, error: appErr } = await admin
     .from("applications")
     .insert({
@@ -79,7 +75,7 @@ export async function registerAsBrand(input: BrandRegistrationInput): Promise<Re
       monthly_inventory_estimate: input.monthlyInventoryEstimate.trim(),
       whatsapp_number: input.whatsappNumber.trim(),
       website: input.website?.trim() || null,
-      applicant_user_id: newUserId,
+      applicant_user_id: null,
       applicant_email: email,
     })
     .select("id")
@@ -87,7 +83,7 @@ export async function registerAsBrand(input: BrandRegistrationInput): Promise<Re
 
   if (appErr) {
     console.error("application insert failed", appErr);
-    return { ok: false, error: "Your account was created but we couldn't record your application. Write to us at correspondence@theasofe.com so we can fix it." };
+    return { ok: false, error: "Couldn't submit your application. Write to correspondence@theasofe.com and we'll receive it directly." };
   }
 
   await notifyApplicationSubmitted({

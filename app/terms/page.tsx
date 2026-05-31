@@ -20,13 +20,17 @@ export default function TermsPage() {
             heading: "1. About Asofe",
             body: <>
               <p>
-                Asofe Limited (&ldquo;Asofe&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates a curated marketplace of independent African luxury houses
-                (&ldquo;designers&rdquo;). Items sold through the platform are fulfilled by the originating designer and shipped to you directly,
-                or, where stated, dispatched from our Lagos atelier.
+                Kadd Consulting Limited (&ldquo;Asofe&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) trades as Asofe
+                and operates a curated marketplace of independent African luxury houses (&ldquo;designers&rdquo;).
+                Items sold through the platform are sourced from the originating designer and dispatched from
+                our UK fulfilment partner.
               </p>
               <p>
-                Our registered office address is available on request from our customer-care team. By placing an
-                order through theasofe.com you agree to the terms set out below.
+                Kadd Consulting Limited is registered in England and Wales, company number 15467682,
+                registered office at 33 Lansbury Road, Newton Leys, Bletchley, Bucks, United Kingdom, MK3 5QP.
+                By placing an order through theasofe.com you agree to the terms set out below. For any
+                question, write to{" "}
+                <a href="mailto:correspondence@theasofe.com" className="lux-link" style={{ color: "var(--color-oxblood)" }}>correspondence@theasofe.com</a>.
               </p>
             </>,
           },

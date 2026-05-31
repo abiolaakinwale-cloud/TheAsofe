@@ -19,8 +19,9 @@ export default function PrivacyPage() {
           {
             heading: "1. Who is responsible",
             body: <p>
-              Asofe Limited is the data controller for personal information you share with us. Our registered office
-              address is available on request from our privacy team at{" "}
+              Kadd Consulting Limited (trading as Asofe) is the data controller for personal information you share with us.
+              Registered in England and Wales, company number 15467682, registered office at 33 Lansbury Road,
+              Newton Leys, Bletchley, Bucks, United Kingdom, MK3 5QP. Reach our privacy team at{" "}
               <a href="mailto:privacy@theasofe.com" className="lux-link" style={{ color: "var(--color-oxblood)" }}>privacy@theasofe.com</a>.
             </p>,
           },

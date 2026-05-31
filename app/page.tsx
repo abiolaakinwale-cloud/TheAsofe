@@ -166,11 +166,14 @@ function Hero({ settings }: { settings: Awaited<ReturnType<typeof getSiteSetting
 
 // ─── Stats strip ─────────────────────────────────────────────────────────────
 
+// Pre-launch posture: numerical claims have been replaced with honest qualitative
+// statements until we can defend each metric with real data. Re-introduce
+// numbers once they're true.
 const stats: { stat: string; label: string }[] = [
-  { stat: "2–4 d",  label: "UK delivery on stocked pieces" },
-  { stat: "500+",   label: "Verified designers in onboarding" },
-  { stat: "99 %",   label: "Order success rate" },
-  { stat: "28 d",   label: "Complimentary returns window" },
+  { stat: "UK fulfilled",       label: "Designer-direct, dispatched from London" },
+  { stat: "Founding designers", label: "First houses now being onboarded" },
+  { stat: "Authentic",          label: "Every piece sourced from its atelier" },
+  { stat: "28 d returns",       label: "Complimentary returns window" },
 ];
 
 function StatsStrip() {

@@ -21,6 +21,7 @@ export default async function SellersPage() {
       <HowItWorks />
       <WhySell />
       <Metrics />
+      <Commercials />
       <FormSection />
       <FinalCta />
     </>
@@ -282,10 +283,16 @@ function WhySell() {
 // ─── Metrics ─────────────────────────────────────────────────────────────────
 
 const metrics = [
-  { stat: "2–3 days", label: "Average UK delivery on stocked inventory" },
-  { stat: "One hub",  label: "Consolidated freight, customs, and duties" },
-  { stat: "GBP £",    label: "Diaspora-trusted checkout in local currency" },
-  { stat: "Local",    label: "UK returns address with same-day inspection" },
+  // TODO (pre-launch verification): each of these reads as a delivered
+  // operational claim. Confirm with the founder before public launch:
+  //   • UK hub address + operator
+  //   • Lagos consolidator partner and freight terms
+  //   • Live UK customs handling (HMRC EORI, IOSS, deferment account)
+  //   • UK returns processing operator + SLA
+  { stat: "UK fulfilled",  label: "Designer-direct, dispatched from London" },
+  { stat: "One contract",  label: "We handle freight, customs, and returns" },
+  { stat: "GBP checkout",  label: "Diaspora customers buy in their local currency" },
+  { stat: "UK returns",    label: "Customers return to a UK address, not the atelier" },
 ];
 
 function Metrics() {
@@ -313,6 +320,48 @@ function Metrics() {
         </Stagger>
       </div>
     </section>
+  );
+}
+
+// ─── Commercials: commission + payouts transparency ─────────────────────────
+
+function Commercials() {
+  return (
+    <section className="py-28 lg:py-36" style={{ backgroundColor: "var(--color-cream)" }}>
+      <div className="max-w-[88rem] mx-auto px-6 lg:px-12 grid lg:grid-cols-12 gap-12 lg:gap-20 items-start">
+        <div className="lg:col-span-5">
+          <Reveal>
+            <p className="eyebrow mb-5" style={{ color: "var(--color-oxblood)" }}>How payouts work</p>
+            <h2 className="display text-[clamp(2rem,4vw,3.4rem)] leading-tight tracking-[-0.01em] mb-6" style={{ color: "var(--color-ink)" }}>
+              Plain commercials. Nothing buried.
+            </h2>
+            <p className="text-base leading-relaxed max-w-md" style={{ color: "var(--color-ink-soft)" }}>
+              Stripe collects payment from the customer in GBP. Asofe holds the funds, deducts a fixed commission, and pays you the net at the end of each month for orders that have settled (delivered, returns window closed).
+            </p>
+          </Reveal>
+        </div>
+        <div className="lg:col-span-7">
+          <Stagger className="grid sm:grid-cols-2 gap-px">
+            <Term k="Commission" v="30 %" body="Asofe&apos;s share covers UK fulfilment, payment processing, marketing, and platform operation. Designers receive 70 % of the gross price." />
+            <Term k="Payout cycle" v="Monthly" body="A statement on the 1st of each month for the previous month&apos;s settled orders. Manual transfer to your nominated account within 5 working days." />
+            <Term k="Refunds" v="Pro-rata" body="If a piece is returned, the refund is deducted from that month&apos;s statement at your unit price. You see every line in your dashboard." />
+            <Term k="Currency" v="GBP → your choice" body="Settled in GBP; we&apos;ll wire to NGN, USD or local currency. FX disclosed on each statement." />
+          </Stagger>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Term({ k, v, body }: { k: string; v: string; body: string }) {
+  return (
+    <StaggerItem>
+      <div className="p-8 lg:p-10 h-full" style={{ backgroundColor: "var(--color-ground)" }}>
+        <p className="eyebrow mb-3" style={{ color: "var(--color-muted)" }}>{k}</p>
+        <p className="display text-3xl lg:text-4xl mb-5" style={{ color: "var(--color-ink)" }}>{v}</p>
+        <p className="text-sm leading-relaxed" style={{ color: "var(--color-ink-soft)" }}>{body}</p>
+      </div>
+    </StaggerItem>
   );
 }
 
