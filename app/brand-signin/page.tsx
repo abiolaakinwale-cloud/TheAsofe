@@ -76,7 +76,7 @@ export default async function BrandSignInPage({
           </p>
         )}
 
-        <SignInForm next={next || "/dashboard"} demoRole="brand" />
+        <SignInForm next={next || "/dashboard"} />
 
         <p className="mt-10 text-[10px] tracking-[0.22em] uppercase" style={{ color: "var(--color-muted)" }}>
           Not on Asofe yet?{" "}

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { logIn, signUp, sendPasswordReset } from "./actions";
-import { generateDemoCredentials, type DemoRole } from "./demo-actions";
 
 type Variant = "light" | "dark";
 type Mode = "login" | "signup" | "reset";
@@ -11,18 +10,15 @@ type Mode = "login" | "signup" | "reset";
 export default function SignInForm({
   next,
   variant = "light",
-  demoRole,
 }: {
   next: string | null;
   variant?: Variant;
-  demoRole?: DemoRole;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, startTransition] = useTransition();
-  const [demoPending, startDemoTransition] = useTransition();
   const [status, setStatus] = useState<{ kind: "idle" } | { kind: "info"; msg: string } | { kind: "error"; msg: string }>({ kind: "idle" });
 
   const c = variant === "dark"
@@ -76,25 +72,6 @@ export default function SignInForm({
     : mode === "reset" ? "Send reset link"
     : mode === "signup" ? "Create account"
     : "Log in";
-
-  function requestDemoLogin() {
-    if (!demoRole) return;
-    setStatus({ kind: "idle" });
-    startDemoTransition(async () => {
-      const r = await generateDemoCredentials(demoRole);
-      if (!r.ok) {
-        setStatus({ kind: "error", msg: r.error });
-        return;
-      }
-      setMode("login");
-      setEmail(r.email);
-      setPassword(r.password);
-      setStatus({
-        kind: "info",
-        msg: `Temporary credentials filled in. Click "Log in" to continue.`,
-      });
-    });
-  }
 
   return (
     <div className="space-y-6">
@@ -183,25 +160,6 @@ export default function SignInForm({
         )}
       </div>
 
-      {demoRole && (
-        <div className="pt-6 border-t" style={{ borderColor: c.border }}>
-          <p className="text-[10px] tracking-[0.22em] uppercase mb-3" style={{ color: c.mutedLink }}>
-            Just looking?
-          </p>
-          <button
-            type="button"
-            onClick={requestDemoLogin}
-            disabled={demoPending}
-            className="w-full px-6 py-3 text-[11px] tracking-[0.22em] uppercase font-medium border disabled:opacity-50"
-            style={{ borderColor: c.text, color: c.text, backgroundColor: "transparent" }}
-          >
-            {demoPending ? "Generating…" : `Generate ${demoRole} demo login`}
-          </button>
-          <p className="mt-3 text-[10px] tracking-[0.12em] leading-relaxed" style={{ color: c.mutedLink }}>
-            Creates short-lived credentials. Any previous demo session is invalidated.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

@@ -69,7 +69,7 @@ export default async function SignInPage({
           </p>
         )}
 
-        <SignInForm next={next ?? null} demoRole="customer" />
+        <SignInForm next={next ?? null} />
 
         <p className="mt-10 text-[10px] tracking-[0.22em] uppercase" style={{ color: "var(--color-muted)" }}>
           Run a brand?{" "}

@@ -72,7 +72,7 @@ export default async function AdminSignInPage({
           </p>
         )}
 
-        <SignInForm next={next || "/admin"} variant="dark" demoRole="staff" />
+        <SignInForm next={next || "/admin"} variant="dark" />
 
         <p className="mt-10 text-[10px] tracking-[0.22em] uppercase" style={{ color: "rgba(255,255,255,0.45)" }}>
           Customer account? <a href="/signin" className="underline">Log in over here →</a>
