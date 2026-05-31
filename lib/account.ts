@@ -8,6 +8,25 @@ export const ORDER_STATUS_LABEL = {
   refunded:   "Refunded",
 } as const;
 
+export const RETURN_STATUS_LABEL = {
+  requested:  "Requested — awaiting receipt",
+  approved:   "Approved",
+  received:   "Received — inspecting",
+  refunded:   "Refunded",
+  rejected:   "Rejected",
+  cancelled:  "Cancelled",
+} as const;
+
+export const RETURN_REASON_LABEL = {
+  sizing:            "Wrong size",
+  quality:           "Quality below expectation",
+  not_as_described:  "Not as described",
+  arrived_damaged:   "Arrived damaged",
+  wrong_item:        "Wrong item sent",
+  changed_mind:      "Changed mind",
+  other:             "Other",
+} as const;
+
 export function formatPrice(amount: number, currency = "GBP") {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",

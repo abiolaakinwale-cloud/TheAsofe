@@ -194,6 +194,99 @@ export async function notifyShipmentInducted(args: {
   });
 }
 
+// ─── Returns ───────────────────────────────────────────────────────────────
+
+type ReturnSummary = {
+  rmaNumber: string;
+  orderId: string;
+  customerEmail: string;
+  reason: string;
+  itemsLabel: string;             // pre-rendered "2× Aso Oke Coat (M)\n1× Bazin Jacket (L)"
+  refundAmount?: number;          // pence
+};
+
+export async function notifyReturnRequested(r: ReturnSummary): Promise<void> {
+  await send({
+    to: r.customerEmail,
+    subject: `Return request received · ${r.rmaNumber}`,
+    text: [
+      `Thank you — we've received your return request.`,
+      ``,
+      `Return reference: ${r.rmaNumber}`,
+      `Order: ${orderRef(r.orderId)}`,
+      ``,
+      `Items being returned:`,
+      r.itemsLabel,
+      ``,
+      `Reason: ${r.reason}`,
+      ``,
+      `Next: post the pieces back in their original packaging to:`,
+      `  Asofe Returns · ${r.rmaNumber}`,
+      `  Address shared on request — write to correspondence@theasofe.com`,
+      ``,
+      `Once we receive the pieces and confirm condition, your refund will be processed to the original payment method (typically 5-10 business days).`,
+    ].join("\n"),
+  });
+  await send({
+    to: ADMIN_EMAIL,
+    subject: `New return request · ${r.rmaNumber} · order ${orderRef(r.orderId)}`,
+    text: [
+      `A new return request has been initiated.`,
+      ``,
+      `RMA: ${r.rmaNumber}`,
+      `Order: ${orderRef(r.orderId)}`,
+      `Customer: ${r.customerEmail}`,
+      `Reason: ${r.reason}`,
+      ``,
+      `Items:`,
+      r.itemsLabel,
+      ``,
+      `Review: ${SITE_URL}/admin/returns`,
+    ].join("\n"),
+  });
+}
+
+export async function notifyReturnReceived(r: ReturnSummary): Promise<void> {
+  await send({
+    to: r.customerEmail,
+    subject: `We've received your return · ${r.rmaNumber}`,
+    text: [
+      `Your return ${r.rmaNumber} has arrived at our London hub. We're inspecting the pieces now.`,
+      ``,
+      `If everything's in order, your refund will be processed within 2-3 business days; you'll receive a separate note when the money is on its way back.`,
+    ].join("\n"),
+  });
+}
+
+export async function notifyReturnRefunded(r: ReturnSummary): Promise<void> {
+  await send({
+    to: r.customerEmail,
+    subject: `Refund processed · ${r.rmaNumber}`,
+    text: [
+      `Your return ${r.rmaNumber} has been processed.`,
+      ``,
+      r.refundAmount ? `Refund amount: ${formatPrice(r.refundAmount)}` : ``,
+      `The refund is on its way back to your original payment method — typically 5-10 business days depending on your bank.`,
+      ``,
+      `Thank you for shopping with Asofe.`,
+    ].filter(Boolean).join("\n"),
+  });
+}
+
+export async function notifyReturnRejected(r: ReturnSummary & { rejectionReason: string }): Promise<void> {
+  await send({
+    to: r.customerEmail,
+    subject: `Return ${r.rmaNumber} — unable to process`,
+    text: [
+      `We're sorry — we're unable to process your return ${r.rmaNumber}.`,
+      ``,
+      `Reason: ${r.rejectionReason}`,
+      ``,
+      `Please reply to this note if you'd like to discuss this — we read every email.`,
+    ].join("\n"),
+  });
+}
+
 // ─── Low stock ─────────────────────────────────────────────────────────────
 
 export async function notifyLowStock(args: {

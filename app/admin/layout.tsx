@@ -20,6 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span style={{ color: "var(--color-muted)" }}>Asofe · Admin</span>
             <Link href="/admin" className="lux-link">Overview</Link>
             <Link href="/admin/orders" className="lux-link">Orders</Link>
+            <Link href="/admin/returns" className="lux-link">Returns</Link>
             <Link href="/admin/shipments" className="lux-link">Shipments</Link>
             <Link href="/admin/applications" className="lux-link">Applications</Link>
             <Link href="/admin/brands" className="lux-link">Brands</Link>

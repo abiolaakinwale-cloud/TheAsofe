@@ -31,6 +31,19 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
     .select("id, product_slug, brand_slug, name, colour, size, qty, unit_price, lead_time_weeks")
     .eq("order_id", id);
 
+  const { data: returnRow } = await sb
+    .from("returns")
+    .select("id, rma_number, status")
+    .eq("order_id", id)
+    .order("initiated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const returnEligible =
+    !returnRow &&
+    (order.status === "delivered" || order.status === "dispatched") &&
+    (Date.now() - new Date(order.created_at).getTime()) / 86_400_000 <= 28;
+
   // Look up product images via anon client (catalogue is public).
   const slugs = (items ?? []).map(i => i.product_slug);
   const { data: products } = slugs.length
@@ -126,6 +139,25 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
               <Row k="Total" v={formatPrice(order.total, order.currency)} emphasis />
             </div>
           </dl>
+
+          {returnEligible && (
+            <Link
+              href={`/account/orders/${order.id}/return`}
+              className="block mt-8 w-full px-6 py-3 text-center text-[11px] tracking-[0.22em] uppercase font-medium border"
+              style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}
+            >
+              Request a return
+            </Link>
+          )}
+
+          {returnRow && (
+            <div className="mt-8 p-4 border" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-cream)" }}>
+              <p className="eyebrow mb-2" style={{ color: "var(--color-oxblood)" }}>Return in progress</p>
+              <Link href={`/account/returns/${returnRow.id}`} className="lux-link text-sm" style={{ color: "var(--color-ink)" }}>
+                {returnRow.rma_number} · {returnRow.status} →
+              </Link>
+            </div>
+          )}
 
           <p className="mt-10 text-xs leading-relaxed" style={{ color: "var(--color-muted)" }}>
             For questions about this order, write to{" "}

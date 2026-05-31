@@ -16,6 +16,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
             <span style={{ color: "var(--color-muted)" }}>Asofe · Account</span>
             <Link href="/account" className="lux-link">Overview</Link>
             <Link href="/account/orders" className="lux-link">Orders</Link>
+            <Link href="/account/returns" className="lux-link">Returns</Link>
             <Link href="/account/wishlist" className="lux-link">Wishlist</Link>
             <Link href="/account/addresses" className="lux-link">Addresses</Link>
           </div>

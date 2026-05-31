@@ -665,3 +665,80 @@ create policy "admin updates applications" on public.applications
 
 create policy "applicant reads own application" on public.applications
   for select using (applicant_user_id = auth.uid());
+
+-- ─── Returns ─────────────────────────────────────────────────────────────────
+-- Customer-initiated returns. Each return covers ≥1 line item from one order.
+-- Refunds are processed via Stripe; the Stripe webhook handler short-circuits
+-- when orders.status is already 'refunded' so we don't double-restock.
+create table if not exists public.returns (
+  id                uuid primary key default gen_random_uuid(),
+  order_id          uuid not null references public.orders(id) on delete cascade,
+  customer_id       uuid not null references auth.users(id) on delete restrict,
+  rma_number        text not null unique,                -- short e.g. R-A4F7B2
+  status            text not null default 'requested'
+                      check (status in ('requested','approved','received','refunded','rejected','cancelled')),
+  reason            text not null
+                      check (reason in ('sizing','quality','not_as_described','arrived_damaged','wrong_item','changed_mind','other')),
+  customer_note     text,
+  admin_note        text,
+  refund_amount     int,                                 -- pence; populated when refunded
+  refund_currency   text not null default 'GBP',
+  stripe_refund_id  text,
+  initiated_at      timestamptz not null default now(),
+  received_at       timestamptz,
+  refunded_at       timestamptz,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create index if not exists returns_order_idx    on public.returns(order_id);
+create index if not exists returns_customer_idx on public.returns(customer_id);
+create index if not exists returns_status_idx   on public.returns(status);
+
+create table if not exists public.return_items (
+  id              uuid primary key default gen_random_uuid(),
+  return_id       uuid not null references public.returns(id) on delete cascade,
+  order_item_id   uuid not null references public.order_items(id) on delete restrict,
+  qty             int  not null check (qty > 0),
+  restock         boolean not null default true,         -- false if QC fails
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists return_items_return_idx on public.return_items(return_id);
+
+alter table public.returns       enable row level security;
+alter table public.return_items  enable row level security;
+
+drop policy if exists "customer reads own returns"   on public.returns;
+drop policy if exists "customer inserts own returns" on public.returns;
+drop policy if exists "admin reads all returns"      on public.returns;
+drop policy if exists "admin updates returns"        on public.returns;
+
+create policy "customer reads own returns" on public.returns
+  for select using (customer_id = auth.uid());
+
+create policy "customer inserts own returns" on public.returns
+  for insert with check (customer_id = auth.uid());
+
+create policy "admin reads all returns" on public.returns
+  for select using (public.is_admin());
+
+create policy "admin updates returns" on public.returns
+  for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "customer reads own return items"   on public.return_items;
+drop policy if exists "customer inserts own return items" on public.return_items;
+drop policy if exists "admin reads all return items"      on public.return_items;
+drop policy if exists "admin updates return items"        on public.return_items;
+
+create policy "customer reads own return items" on public.return_items
+  for select using (exists (select 1 from public.returns r where r.id = return_id and r.customer_id = auth.uid()));
+
+create policy "customer inserts own return items" on public.return_items
+  for insert with check (exists (select 1 from public.returns r where r.id = return_id and r.customer_id = auth.uid()));
+
+create policy "admin reads all return items" on public.return_items
+  for select using (public.is_admin());
+
+create policy "admin updates return items" on public.return_items
+  for all using (public.is_admin()) with check (public.is_admin());
