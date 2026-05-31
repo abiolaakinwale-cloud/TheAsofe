@@ -10,6 +10,7 @@ Multi-vendor marketplace for independent African fashion designers. UK-fulfilled
 - **Supabase** Postgres + Auth + Storage (provisioned via Vercel Marketplace)
 - **Stripe** Checkout (merchant of record; manual payouts to designers)
 - **Resend** transactional email (orders, shipments, low-stock, applications)
+- **Sentry** scaffolded — activates when `NEXT_PUBLIC_SENTRY_DSN` is set
 - **Vercel** hosting + Analytics + Speed Insights
 
 ## Local development
@@ -31,6 +32,8 @@ npm run dev
 
 ## Scripts
 
+### App lifecycle
+
 | Command | What it does |
 |---|---|
 | `npm run dev` | Local dev server with Turbopack |
@@ -39,6 +42,20 @@ npm run dev
 | `npm run db:seed` | Seed canonical content (categories, brands, sellers) |
 | `vercel` | Deploy a preview |
 | `vercel --prod` | Promote to production |
+
+### Operational tooling (`scripts/`)
+
+| Script | What it does |
+|---|---|
+| `check-db.mjs` | Verify every table + function in `schema.sql` exists live; print row counts |
+| `check-storage.mjs` | Verify Supabase Storage buckets + their contents |
+| `inspect-latest-order.mjs` | Inspect the 3 most recent orders end-to-end (status, Stripe payment intent, address, per-line-item stock state) |
+| `smoke-checkout.mjs` | End-to-end Stripe webhook smoke test against production — signs a synthetic event, verifies order flips to `paid`, stock decrements. `--cleanup` undoes and restores stock. |
+| `admin-set-password.mjs <email> <pw>` | Set a password directly (bypasses email flow — useful when Supabase Site URL isn't configured yet) |
+| `generate-recovery-link.mjs <email>` | Generate a one-shot password-recovery link |
+| `list-users.mjs` | Dump every Supabase auth user + their `profiles` row |
+| `create-demo-accounts.mjs` / `delete-demo-accounts.mjs` | Provision/teardown demo customer + brand + staff accounts (pre-launch convenience — strip before public launch) |
+| `seed-cms.mjs` · `seed-editorial-journal.mjs` · `seed-stock.mjs` · `update-asofe-images.mjs` | Catalogue + content seeders |
 
 ## Project layout
 
@@ -103,13 +120,23 @@ goes via `/auth/reset`. First sign-in auto-creates a `profiles` row via the
 - Storage buckets: `product-images` (seller writes own folder),
   `site-images` (admin-only write). Both public-read.
 
+## Notable architecture decisions
+
+- **Variants** — Products can declare `colours[]`. `stock_levels` is keyed `(product_slug, colour, size)`, and the `decrement_stock` / `increment_stock` RPCs are colour-aware. Single-colour legacy products keep working unchanged (empty `colours[]` → falls through to `products.colour`).
+- **Webhook idempotency** — The Stripe webhook short-circuits when `orders.status !== "pending"`, so Stripe retries are safe.
+- **Pagination** — 48 per page, pure UI-layer slice over the filtered set so filter facets compute against the full result. Lives in `lib/pagination.ts` + `components/Pagination.tsx`.
+- **SEO** — Dynamic `sitemap.xml` includes every product/brand/category. JSON-LD `Product` schema with live stock availability ships on every product page; `Brand`, `Article`, `Organization`, `WebSite`+SearchAction, and `BreadcrumbList` schemas where applicable. Canonicals point at the eventual `www.theasofe.com` URL.
+- **Mobile** — 44px minimum tap targets across nav, bag, sign-in, filters. Inputs ≥ 16px to avoid iOS auto-zoom. Theme-color set for both light + dark scheme.
+
 ## Open issues / next steps
 
-- **Stripe live keys** — checkout returns "configuring" until set
-- **Resend** — set `RESEND_API_KEY` + verify sender domain
-- **Sentry / error tracking** — install `@sentry/nextjs` and set `NEXT_PUBLIC_SENTRY_DSN`
+- **Stripe live keys** — test keys live; swap to `sk_live_*` when ready (5-min job)
+- **Resend domain verification** — API key wired; `theasofe.com` registered. Add 3 DNS records at the registrar, then call `/domains/verify`. Until verified, only the account-holder email receives mail.
+- **Custom domain DNS** — `www.theasofe.com` + apex added to Vercel; awaiting 2 GoDaddy DNS records
+- **Sentry DSN** — instrumentation present; just needs `NEXT_PUBLIC_SENTRY_DSN`
 - **Log drains** — needs Vercel Pro plan
 - **UK courier integration** — Royal Mail Click & Drop / DPD decision pending
+- **Demo wiring** — Strip `app/signin/demo-actions.ts`, `demoRole` props × 3, and demo scripts before public launch
 
 ## Deploys
 
