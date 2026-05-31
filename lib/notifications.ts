@@ -287,6 +287,63 @@ export async function notifyReturnRejected(r: ReturnSummary & { rejectionReason:
   });
 }
 
+// ─── Payouts ───────────────────────────────────────────────────────────────
+
+export async function notifyPayoutStatement(args: {
+  sellerEmail: string;
+  brandName: string;
+  periodStart: string;
+  periodEnd: string;
+  gross: number;
+  refunds: number;
+  commission: number;
+  net: number;
+  payoutId: string;
+}): Promise<void> {
+  await send({
+    to: args.sellerEmail,
+    subject: `Payout statement · ${args.brandName} · ${args.periodStart} – ${args.periodEnd}`,
+    text: [
+      `Your Asofe payout statement is ready.`,
+      ``,
+      `Period: ${args.periodStart} – ${args.periodEnd}`,
+      ``,
+      `  Gross sales:     ${formatPrice(args.gross)}`,
+      `  Refunds:        −${formatPrice(args.refunds)}`,
+      `  Commission:     −${formatPrice(args.commission)}`,
+      `  ─────────────────────────────`,
+      `  Owed to ${args.brandName}: ${formatPrice(args.net)}`,
+      ``,
+      `Statement: ${SITE_URL}/dashboard/payouts/${args.payoutId}`,
+      ``,
+      `Payment will be issued shortly via the route you've nominated.`,
+    ].join("\n"),
+  });
+}
+
+export async function notifyPayoutPaid(args: {
+  sellerEmail: string;
+  brandName: string;
+  net: number;
+  paidVia: string;
+  paidRef: string;
+  payoutId: string;
+}): Promise<void> {
+  await send({
+    to: args.sellerEmail,
+    subject: `Payout sent · ${formatPrice(args.net)} via ${args.paidVia}`,
+    text: [
+      `Your payout has been issued.`,
+      ``,
+      `Amount:    ${formatPrice(args.net)}`,
+      `Method:    ${args.paidVia}`,
+      `Reference: ${args.paidRef}`,
+      ``,
+      `Statement: ${SITE_URL}/dashboard/payouts/${args.payoutId}`,
+    ].join("\n"),
+  });
+}
+
 // ─── Low stock ─────────────────────────────────────────────────────────────
 
 export async function notifyLowStock(args: {

@@ -59,6 +59,11 @@ export async function updateBrand(originalSlug: string, formData: FormData) {
   const origin = String(formData.get("origin") || "").trim();
   const story = String(formData.get("story") || "").trim();
   const heroImage = String(formData.get("hero_image") || "").trim();
+  const commissionRaw = String(formData.get("commission_rate") || "").trim();
+  const commission = commissionRaw ? Number(commissionRaw) : undefined;
+  if (commission !== undefined && (!Number.isFinite(commission) || commission < 0 || commission > 1)) {
+    throw new Error("Commission rate must be between 0 and 1 (e.g. 0.30).");
+  }
 
   if (!name || !tagline || !origin || !story || !heroImage) {
     throw new Error("All fields except 'founded' are required.");
@@ -67,7 +72,10 @@ export async function updateBrand(originalSlug: string, formData: FormData) {
   const sb = getAdminSupabase();
   const { error } = await sb
     .from("brands")
-    .update({ name, tagline, founded: founded || "—", origin, story, hero_image: heroImage })
+    .update({
+      name, tagline, founded: founded || "—", origin, story, hero_image: heroImage,
+      ...(commission !== undefined ? { commission_rate: commission } : {}),
+    })
     .eq("slug", originalSlug);
   if (error) throw new Error(error.message);
 

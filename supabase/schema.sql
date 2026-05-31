@@ -742,3 +742,83 @@ create policy "admin reads all return items" on public.return_items
 
 create policy "admin updates return items" on public.return_items
   for all using (public.is_admin()) with check (public.is_admin());
+
+-- ─── Designer payouts ────────────────────────────────────────────────────────
+-- Marketplace flow: customer pays Stripe → Stripe pays Asofe → Asofe pays
+-- designer their share (after commission). This is the reconciliation layer:
+-- a "payout" groups all eligible order lines for one brand over one period,
+-- applies the brand's commission rate, and tracks the manual settlement.
+
+alter table public.brands
+  add column if not exists commission_rate numeric(4,3) not null default 0.300
+    check (commission_rate >= 0 and commission_rate <= 1);
+
+create table if not exists public.payouts (
+  id                  uuid primary key default gen_random_uuid(),
+  brand               text not null references public.brands(slug) on delete restrict,
+  status              text not null default 'draft'
+                        check (status in ('draft','sent','paid','cancelled')),
+  period_start        date not null,
+  period_end          date not null,
+  gross_total         int  not null default 0,              -- pence; sum of lines.gross
+  refund_total        int  not null default 0,              -- pence; refunded amount within period
+  commission_amount   int  not null default 0,              -- pence; Asofe's cut
+  net_amount          int  not null default 0,              -- pence; what's owed to the brand
+  currency            text not null default 'GBP',
+  paid_via            text,                                 -- "Wise", "Bank transfer", etc.
+  paid_ref            text,                                 -- transaction reference
+  paid_at             timestamptz,
+  sent_at             timestamptz,                          -- when statement was emailed to brand
+  notes               text,
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now(),
+  check (period_end >= period_start)
+);
+
+create index if not exists payouts_brand_idx  on public.payouts(brand);
+create index if not exists payouts_status_idx on public.payouts(status);
+create index if not exists payouts_period_idx on public.payouts(period_start, period_end);
+
+create table if not exists public.payout_lines (
+  id                  uuid primary key default gen_random_uuid(),
+  payout_id           uuid not null references public.payouts(id) on delete cascade,
+  order_id            uuid not null references public.orders(id) on delete restrict,
+  order_item_id       uuid not null references public.order_items(id) on delete restrict,
+  product_slug        text not null,
+  product_name        text not null,
+  qty                 int  not null,
+  unit_price          int  not null,
+  gross_amount        int  not null,                        -- qty × unit_price (positive)
+  refund_amount       int  not null default 0,              -- positive number; subtracted from gross
+  commission_rate     numeric(4,3) not null,
+  net_amount          int  not null,                        -- (gross - refund) × (1 - commission_rate)
+  created_at          timestamptz not null default now()
+);
+
+create index if not exists payout_lines_payout_idx on public.payout_lines(payout_id);
+
+alter table public.payouts      enable row level security;
+alter table public.payout_lines enable row level security;
+
+drop policy if exists "seller reads own payouts"      on public.payouts;
+drop policy if exists "admin reads all payouts"       on public.payouts;
+drop policy if exists "admin writes payouts"          on public.payouts;
+drop policy if exists "seller reads own payout lines" on public.payout_lines;
+drop policy if exists "admin reads all payout lines"  on public.payout_lines;
+drop policy if exists "admin writes payout lines"     on public.payout_lines;
+
+create policy "seller reads own payouts" on public.payouts
+  for select using (brand = public.current_brand());
+create policy "admin reads all payouts" on public.payouts
+  for select using (public.is_admin());
+create policy "admin writes payouts" on public.payouts
+  for all using (public.is_admin()) with check (public.is_admin());
+
+create policy "seller reads own payout lines" on public.payout_lines
+  for select using (
+    exists (select 1 from public.payouts p where p.id = payout_id and p.brand = public.current_brand())
+  );
+create policy "admin reads all payout lines" on public.payout_lines
+  for select using (public.is_admin());
+create policy "admin writes payout lines" on public.payout_lines
+  for all using (public.is_admin()) with check (public.is_admin());

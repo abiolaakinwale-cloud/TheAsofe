@@ -13,7 +13,7 @@ export default async function EditBrandPage({
   const sb = getAdminSupabase();
   const { data: brand } = await sb
     .from("brands")
-    .select("slug, name, tagline, founded, origin, story, hero_image")
+    .select("slug, name, tagline, founded, origin, story, hero_image, commission_rate")
     .eq("slug", slug)
     .maybeSingle();
   if (!brand) notFound();
@@ -34,6 +34,22 @@ export default async function EditBrandPage({
         <Field name="tagline" label="Tagline"                defaultValue={brand.tagline} />
         <Field name="origin"  label="Origin (city)"          defaultValue={brand.origin} />
         <Field name="founded" label="Founded (year, optional)" defaultValue={brand.founded === "—" ? "" : brand.founded} />
+        <label className="block">
+          <span className="block mb-2 text-[10px] tracking-[0.18em] uppercase font-medium" style={{ color: "var(--color-ink)" }}>Commission rate (Asofe&apos;s share, 0.00–1.00)</span>
+          <input
+            name="commission_rate"
+            type="number"
+            step="0.01"
+            min="0"
+            max="1"
+            defaultValue={String(brand.commission_rate ?? 0.30)}
+            className="w-32 bg-transparent border-b py-2 text-sm outline-none focus:border-[var(--color-ink)] tabular-nums"
+            style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+          />
+          <span className="ml-3 text-xs" style={{ color: "var(--color-muted)" }}>
+            e.g. 0.30 = Asofe keeps 30 %, designer receives 70 %
+          </span>
+        </label>
         <ImagePicker name="hero_image" label="Hero image" folder="brands" defaultValue={brand.hero_image} full />
         <TextArea name="story" label="House story" rows={6} defaultValue={brand.story} />
 
