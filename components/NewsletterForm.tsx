@@ -37,11 +37,13 @@ export default function NewsletterForm({ source = "footer" }: { source?: string 
     <form onSubmit={handleSubmit} className="flex items-end border-b" style={{ borderColor: "rgba(255,255,255,0.25)" }}>
       <input
         type="email"
+        inputMode="email"
+        autoComplete="email"
         required
         value={email}
         onChange={e => setEmail(e.target.value)}
         placeholder="Your email"
-        className="flex-1 bg-transparent py-3 text-sm outline-none placeholder:opacity-50"
+        className="flex-1 bg-transparent py-3 text-base outline-none placeholder:opacity-50 min-w-0"
         style={{ color: "rgba(255,255,255,0.9)" }}
       />
       <button

@@ -39,21 +39,21 @@ export default async function BrandSignInPage({
         <div className="grid grid-cols-3 mb-10 border" style={{ borderColor: "var(--color-rule)" }}>
           <Link
             href="/signin"
-            className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium transition-colors hover:bg-[var(--color-ground)]"
+            className="text-center min-h-[44px] flex items-center justify-center text-[11px] tracking-[0.22em] uppercase font-medium transition-colors hover:bg-[var(--color-ground)]"
             style={{ color: "var(--color-ink)" }}
           >
             Customer
           </Link>
           <span
             aria-current="page"
-            className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium"
+            className="text-center min-h-[44px] flex items-center justify-center text-[11px] tracking-[0.22em] uppercase font-medium"
             style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}
           >
             Brand
           </span>
           <Link
             href="/admin-signin"
-            className="text-center py-3 text-[11px] tracking-[0.22em] uppercase font-medium transition-colors hover:bg-[var(--color-ground)]"
+            className="text-center min-h-[44px] flex items-center justify-center text-[11px] tracking-[0.22em] uppercase font-medium transition-colors hover:bg-[var(--color-ground)]"
             style={{ color: "var(--color-ink)" }}
           >
             Staff

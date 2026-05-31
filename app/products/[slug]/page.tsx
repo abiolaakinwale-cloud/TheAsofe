@@ -105,7 +105,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       {/* ─── Breadcrumb ──────────────────────────────────────────── */}
       <nav className="border-b" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-ground)" }}>
-        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-4 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase" style={{ color: "var(--color-muted)" }}>
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] tracking-[0.14em] uppercase" style={{ color: "var(--color-muted)" }}>
           <Link href="/" className="lux-link">Home</Link>
           <span>/</span>
           {category && (

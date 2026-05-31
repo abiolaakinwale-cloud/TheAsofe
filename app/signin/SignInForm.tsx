@@ -132,7 +132,6 @@ export default function SignInForm({
           name="email"
           type="email"
           autoComplete="email"
-          autoFocus
           value={email}
           onChange={setEmail}
           required

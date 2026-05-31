@@ -97,7 +97,7 @@ export default function Navigation({
               type="button"
               aria-label="Open menu"
               onClick={() => setMenuOpen(true)}
-              className="lg:hidden p-2 -ml-2"
+              className="lg:hidden w-11 h-11 -ml-3 flex flex-col items-start justify-center"
             >
               <span className="block w-5 h-px mb-1.5" style={{ backgroundColor: "var(--color-ink)" }} />
               <span className="block w-5 h-px"        style={{ backgroundColor: "var(--color-ink)" }} />
@@ -176,7 +176,7 @@ export default function Navigation({
         <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: "var(--color-ground)" }}>
           <div className="px-6 py-6 flex items-center justify-between border-b" style={{ borderColor: "var(--color-rule)" }}>
             <span className="display text-2xl tracking-[0.04em] uppercase font-light">Asofe</span>
-            <button type="button" aria-label="Close" onClick={() => setMenuOpen(false)} className="text-xl leading-none">×</button>
+            <button type="button" aria-label="Close" onClick={() => setMenuOpen(false)} className="text-2xl leading-none w-11 h-11 -mr-3 flex items-center justify-center">×</button>
           </div>
           <nav className="px-6 py-8 flex flex-col gap-1 text-base tracking-[0.1em] uppercase font-medium" style={{ color: "var(--color-ink)" }}>
             {primaryLinks.map(l => {

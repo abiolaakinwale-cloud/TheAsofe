@@ -84,9 +84,9 @@ export default async function BagPage() {
                   </dl>
                 </div>
 
-                <div className="col-span-8 lg:col-span-2 flex items-center gap-1 self-center" >
+                <div className="col-span-8 lg:col-span-2 flex items-center gap-1 self-center mt-4 lg:mt-0">
                   <QtyButton slug={it.slug} colour={it.colour} size={it.size} qty={it.qty - 1} label="−" disabled={it.qty <= 0} />
-                  <span className="inline-flex items-center justify-center min-w-[2.5rem] py-2 px-2 text-sm tabular-nums border" style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}>
+                  <span className="inline-flex items-center justify-center min-w-[3rem] h-11 px-2 text-sm tabular-nums border" style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}>
                     {it.qty}
                   </span>
                   <QtyButton
@@ -101,10 +101,10 @@ export default async function BagPage() {
                   />
                 </div>
 
-                <div className="col-span-4 lg:col-span-2 text-right self-center">
-                  <p className="tabular-nums mb-3" style={{ color: "var(--color-ink)" }}>{formatPrice(it.lineSubtotal)}</p>
+                <div className="col-span-4 lg:col-span-2 text-right self-center mt-4 lg:mt-0">
+                  <p className="tabular-nums mb-3 text-base" style={{ color: "var(--color-ink)" }}>{formatPrice(it.lineSubtotal)}</p>
                   <form action={removeFromBag.bind(null, it.slug, it.colour, it.size)}>
-                    <button type="submit" className="text-[10px] tracking-[0.18em] uppercase lux-link" style={{ color: "var(--color-muted)" }}>
+                    <button type="submit" className="text-[11px] tracking-[0.18em] uppercase lux-link py-2 -my-2" style={{ color: "var(--color-muted)" }}>
                       Remove
                     </button>
                   </form>
@@ -151,7 +151,7 @@ function QtyButton({ slug, colour, size, qty, label, disabled }: { slug: string;
         type="submit"
         disabled={disabled}
         aria-label={label === "+" ? "Increase quantity" : "Decrease quantity"}
-        className="w-9 h-9 border text-base transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[var(--color-ink)] hover:text-[var(--color-ground)]"
+        className="w-11 h-11 border text-lg leading-none transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[var(--color-ink)] hover:text-[var(--color-ground)]"
         style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
       >
         {label}

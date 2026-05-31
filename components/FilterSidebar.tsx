@@ -208,12 +208,13 @@ export default function FilterSidebar({ brands, sizes, priceBounds, current, tot
   return (
     <>
       {/* Mobile filter toggle bar */}
-      <div className="lg:hidden flex items-center justify-between gap-4 py-3 border-y" style={{ borderColor: "var(--color-rule)" }}>
+      <div className="lg:hidden flex items-center justify-between gap-4 border-y" style={{ borderColor: "var(--color-rule)" }}>
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="inline-flex items-center gap-2 text-[11px] tracking-[0.18em] uppercase font-medium"
+          className="inline-flex items-center gap-2 py-4 -my-px text-[12px] tracking-[0.18em] uppercase font-medium min-h-[48px]"
           style={{ color: "var(--color-ink)" }}
+          aria-label="Open filter and sort"
         >
           Filter &amp; Sort {activeCount > 0 && <span style={{ color: "var(--color-muted)" }}>· {activeCount}</span>}
         </button>
@@ -240,7 +241,7 @@ export default function FilterSidebar({ brands, sizes, priceBounds, current, tot
         <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: "var(--color-ground)" }}>
           <div className="px-6 py-5 flex items-center justify-between border-b sticky top-0" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-ground)" }}>
             <p className="eyebrow" style={{ color: "var(--color-ink)" }}>Filter &amp; Sort</p>
-            <button type="button" aria-label="Close" onClick={() => setMobileOpen(false)} className="text-xl leading-none">×</button>
+            <button type="button" aria-label="Close" onClick={() => setMobileOpen(false)} className="text-2xl leading-none w-11 h-11 -mr-3 flex items-center justify-center">×</button>
           </div>
           <div className="px-6 py-6 pb-32">{Panel}</div>
           <div className="fixed bottom-0 inset-x-0 p-4 border-t" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-ground)" }}>
