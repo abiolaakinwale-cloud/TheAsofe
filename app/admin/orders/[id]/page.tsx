@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { formatPrice } from "@/lib/data";
-import { setOrderStatus } from "../actions";
+import { setOrderStatus, dispatchOrder } from "../actions";
 
 const NEXT_STATES: Record<string, { label: string; to: "paid" | "packed" | "dispatched" | "delivered" | "cancelled" }[]> = {
   paid:       [{ label: "Mark packed",     to: "packed" },     { label: "Cancel",  to: "cancelled" }],
@@ -86,7 +86,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
             <div className="p-6" style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)" }}>
               <p className="eyebrow mb-4" style={{ color: "var(--color-saffron)" }}>Move forward</p>
               <div className="flex flex-col gap-2">
-                {transitions.map(t => (
+                {transitions.filter(t => t.to !== "dispatched").map(t => (
                   <form key={t.to} action={setOrderStatus.bind(null, order.id, t.to)}>
                     <button type="submit" className="w-full py-3 text-[11px] tracking-[0.18em] uppercase font-medium" style={{ backgroundColor: t.to === "cancelled" ? "var(--color-oxblood)" : "var(--color-ink)", color: "var(--color-ground)" }}>
                       {t.label}
@@ -94,6 +94,76 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
                   </form>
                 ))}
               </div>
+
+              {transitions.some(t => t.to === "dispatched") && (
+                <details className="mt-4 border-t pt-4" style={{ borderColor: "var(--color-rule)" }}>
+                  <summary className="cursor-pointer text-[11px] tracking-[0.18em] uppercase font-medium" style={{ color: "var(--color-cobalt)" }}>
+                    Dispatch with tracking →
+                  </summary>
+                  <form action={dispatchOrder} className="mt-4 space-y-3">
+                    <input type="hidden" name="id" value={order.id} />
+                    <label className="block">
+                      <span className="block mb-1 text-[10px] tracking-[0.18em] uppercase" style={{ color: "var(--color-muted)" }}>Courier</span>
+                      <input
+                        name="courier"
+                        required
+                        list="couriers"
+                        defaultValue={order.courier ?? ""}
+                        placeholder="e.g. Royal Mail Tracked"
+                        className="w-full h-10 border bg-transparent px-2 text-sm"
+                        style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+                      />
+                      <datalist id="couriers">
+                        <option value="Royal Mail Tracked" />
+                        <option value="Royal Mail" />
+                        <option value="DPD" />
+                        <option value="Evri" />
+                        <option value="Parcelforce" />
+                        <option value="UPS" />
+                        <option value="DHL" />
+                        <option value="FedEx" />
+                      </datalist>
+                    </label>
+                    <label className="block">
+                      <span className="block mb-1 text-[10px] tracking-[0.18em] uppercase" style={{ color: "var(--color-muted)" }}>Tracking reference</span>
+                      <input
+                        name="tracking_ref"
+                        required
+                        defaultValue={order.tracking_ref ?? ""}
+                        placeholder="AB123456789GB"
+                        className="w-full h-10 border bg-transparent px-2 text-sm font-mono"
+                        style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="block mb-1 text-[10px] tracking-[0.18em] uppercase" style={{ color: "var(--color-muted)" }}>Tracking URL (optional override)</span>
+                      <input
+                        name="tracking_url"
+                        type="url"
+                        defaultValue={order.tracking_url ?? ""}
+                        placeholder="leave blank to auto-generate"
+                        className="w-full h-10 border bg-transparent px-2 text-xs"
+                        style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="block mb-1 text-[10px] tracking-[0.18em] uppercase" style={{ color: "var(--color-muted)" }}>ETA (days from today)</span>
+                      <input
+                        name="eta_days"
+                        type="number"
+                        min="1"
+                        max="14"
+                        defaultValue="3"
+                        className="w-20 h-10 border bg-transparent px-2 text-sm text-center tabular-nums"
+                        style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+                      />
+                    </label>
+                    <button type="submit" className="w-full py-3 text-[11px] tracking-[0.18em] uppercase font-medium" style={{ backgroundColor: "var(--color-emerald)", color: "var(--color-ground)" }}>
+                      Mark dispatched + notify customer
+                    </button>
+                  </form>
+                </details>
+              )}
             </div>
           )}
 

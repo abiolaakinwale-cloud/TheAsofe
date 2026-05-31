@@ -227,6 +227,20 @@ create table if not exists public.orders (
 create index if not exists orders_customer_idx on public.orders(customer_id);
 create index if not exists orders_status_idx   on public.orders(status);
 
+-- Per-status timestamps + outbound courier tracking. Lets the customer
+-- order-tracking page render an audit-quality timeline ("Paid 20 May ·
+-- Packed 21 May · Dispatched 22 May") and a clickable courier link.
+alter table public.orders
+  add column if not exists paid_at         timestamptz,
+  add column if not exists packed_at       timestamptz,
+  add column if not exists dispatched_at   timestamptz,
+  add column if not exists delivered_at    timestamptz,
+  add column if not exists cancelled_at    timestamptz,
+  add column if not exists courier         text,
+  add column if not exists tracking_ref    text,
+  add column if not exists tracking_url    text,
+  add column if not exists eta_date        date;
+
 create table if not exists public.order_items (
   id           uuid primary key default gen_random_uuid(),
   order_id     uuid not null references public.orders(id) on delete cascade,

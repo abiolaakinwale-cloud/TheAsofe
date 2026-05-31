@@ -3,9 +3,10 @@ import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAnonSupabase } from "@/lib/supabase/anon";
-import { formatPrice, formatDate, ORDER_STATUS_LABEL } from "@/lib/account";
+import { formatPrice, formatDate, ORDER_STATUS_LABEL, trackingLink } from "@/lib/account";
 
-const TIMELINE: Array<{ key: string; label: string }> = [
+type TimelineKey = "paid" | "packed" | "dispatched" | "delivered";
+const TIMELINE: Array<{ key: TimelineKey; label: string }> = [
   { key: "paid",       label: "Paid" },
   { key: "packed",     label: "Packed" },
   { key: "dispatched", label: "Dispatched" },
@@ -20,7 +21,12 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
 
   const { data: order } = await sb
     .from("orders")
-    .select("id, created_at, status, subtotal, shipping, total, currency, customer_email")
+    .select(`
+      id, created_at, status, subtotal, shipping, total, currency, customer_email,
+      paid_at, packed_at, dispatched_at, delivered_at, cancelled_at,
+      courier, tracking_ref, tracking_url, eta_date,
+      addresses:shipping_address_id(full_name, line1, line2, city, postcode, country, phone)
+    `)
     .eq("id", id)
     .maybeSingle();
 
@@ -59,6 +65,20 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
     return ["paid", "packed", "dispatched", "delivered"].indexOf(status);
   })();
 
+  const timestampByStep: Record<TimelineKey, string | null> = {
+    paid:       order.paid_at,
+    packed:     order.packed_at,
+    dispatched: order.dispatched_at,
+    delivered:  order.delivered_at,
+  };
+
+  const trackingHref = trackingLink(order.courier, order.tracking_ref, order.tracking_url);
+  type AddressShape = { full_name: string; line1: string; line2: string | null; city: string; postcode: string; country: string; phone: string | null };
+  // PostgREST's inferred type for an embedded FK can be array OR object depending
+  // on Supabase client codegen; normalise.
+  const addressRaw = order.addresses as unknown as AddressShape | AddressShape[] | null;
+  const address: AddressShape | null = Array.isArray(addressRaw) ? (addressRaw[0] ?? null) : addressRaw;
+
   return (
     <>
       <Link href="/account/orders" className="text-[11px] tracking-[0.18em] uppercase lux-link mb-6 inline-block" style={{ color: "var(--color-muted)" }}>
@@ -72,13 +92,17 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
       </h1>
       <p className="serif italic text-lg mb-12" style={{ color: "var(--color-ink-soft)" }}>
         {ORDER_STATUS_LABEL[status] ?? status}
+        {status === "dispatched" && order.eta_date && (
+          <span style={{ color: "var(--color-emerald)" }}> · expected by {formatDate(order.eta_date)}</span>
+        )}
       </p>
 
-      {/* Timeline */}
+      {/* Timeline with timestamps */}
       {reachedIndex >= 0 && (
-        <ol className="grid grid-cols-4 gap-4 mb-16 max-w-3xl">
+        <ol className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-16 max-w-3xl">
           {TIMELINE.map((step, i) => {
             const reached = i <= reachedIndex;
+            const ts = timestampByStep[step.key];
             return (
               <li key={step.key} className="flex flex-col items-start">
                 <span
@@ -91,10 +115,45 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
                 >
                   {step.label}
                 </span>
+                {reached && ts && (
+                  <span className="mt-1 text-[10px]" style={{ color: "var(--color-muted)" }}>
+                    {formatDate(ts)}
+                  </span>
+                )}
               </li>
             );
           })}
         </ol>
+      )}
+
+      {status === "cancelled" && order.cancelled_at && (
+        <p className="mb-12 p-5 max-w-2xl text-sm" style={{ backgroundColor: "var(--color-cream)", color: "var(--color-oxblood)" }}>
+          This order was cancelled on {formatDate(order.cancelled_at)}.
+        </p>
+      )}
+
+      {/* Tracking band — appears when dispatched */}
+      {(status === "dispatched" || status === "delivered") && order.courier && order.tracking_ref && (
+        <section className="mb-12 p-6 lg:p-8 max-w-3xl" style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}>
+          <p className="eyebrow mb-3" style={{ color: "var(--color-saffron-soft)" }}>
+            {status === "delivered" ? "Delivered by" : "On its way with"}
+          </p>
+          <p className="display text-2xl lg:text-3xl mb-2">{order.courier}</p>
+          <p className="font-mono text-sm mb-5" style={{ color: "rgba(255,255,255,0.65)" }}>
+            Tracking: {order.tracking_ref}
+          </p>
+          {trackingHref && (
+            <a
+              href={trackingHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 px-6 py-3 text-[11px] tracking-[0.22em] uppercase font-medium border"
+              style={{ borderColor: "var(--color-ground)", color: "var(--color-ground)" }}
+            >
+              Track parcel →
+            </a>
+          )}
+        </section>
       )}
 
       <section className="grid lg:grid-cols-[1.5fr_1fr] gap-12 max-w-5xl">
@@ -139,6 +198,20 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
               <Row k="Total" v={formatPrice(order.total, order.currency)} emphasis />
             </div>
           </dl>
+
+          {address && (
+            <div className="mt-10 pt-6 border-t" style={{ borderColor: "var(--color-rule)" }}>
+              <p className="eyebrow mb-3" style={{ color: "var(--color-muted)" }}>Shipping to</p>
+              <address className="not-italic text-sm leading-relaxed" style={{ color: "var(--color-ink)" }}>
+                {address.full_name}<br />
+                {address.line1}<br />
+                {address.line2 && <>{address.line2}<br /></>}
+                {address.city} {address.postcode}<br />
+                {address.country}
+                {address.phone && <><br /><span style={{ color: "var(--color-muted)" }}>Tel {address.phone}</span></>}
+              </address>
+            </div>
+          )}
 
           {returnEligible && (
             <Link

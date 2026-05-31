@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
           stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
           total: session.amount_total ? Math.round(session.amount_total / 100) : order.total,
           shipping: session.shipping_cost?.amount_total ? Math.round(session.shipping_cost.amount_total / 100) : 0,
+          paid_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }).eq("id", orderId);
 
