@@ -63,7 +63,7 @@ export default async function CustomerOrderDetail({
   const returnEligible =
     !returnRow &&
     (order.status === "delivered" || order.status === "dispatched") &&
-    (Date.now() - new Date(order.created_at).getTime()) / 86_400_000 <= 28;
+    (Date.now() - new Date(order.created_at).getTime()) / 86_400_000 <= 7;
 
   // Look up product images via anon client (catalogue is public).
   const slugs = (items ?? []).map(i => i.product_slug);

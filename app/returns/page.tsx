@@ -20,8 +20,8 @@ export default function ReturnsPage() {
           {
             heading: "1. The window",
             body: <p>
-              You may return any in-stock piece within twenty-eight days of receipt. The window opens on the day the
-              parcel is signed for and closes at midnight on the twenty-eighth day, in your local time.
+              You may return any in-stock piece within seven days of receipt. The window opens on the day the
+              parcel is signed for and closes at midnight on the seventh day, in your local time.
             </p>,
           },
           {

@@ -66,7 +66,7 @@ export default function BuyerProtectionPage() {
             <p>
               Change-of-mind, sizing issues, or pieces in their original condition you simply don&apos;t want to keep are handled by our standard{" "}
               <Link href="/returns" className="lux-link" style={{ color: "var(--color-ink)" }}>Returns policy</Link>{" "}
-              — 28 days, complimentary, with no questions asked.
+              — 7 days, complimentary, with no questions asked.
             </p>
             <p>
               Buyer Protection is for things that went wrong with the piece or the transaction; Returns is for things that went wrong with the fit.

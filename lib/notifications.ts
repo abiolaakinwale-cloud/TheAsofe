@@ -186,7 +186,7 @@ export async function notifyOrderDelivered(order: { id: string; customer_email: 
     text: [
       `Your order ${orderRef(order.id)} has been delivered.`,
       ``,
-      `We hope the pieces find their place. Returns are open for 28 days; reply to this note if anything is amiss.`,
+      `We hope the pieces find their place. Returns are open for 7 days; reply to this note if anything is amiss.`,
       ``,
       `For new arrivals and atelier notes: ${SITE_URL}/editorial`,
     ].join("\n"),

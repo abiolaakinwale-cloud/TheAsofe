@@ -173,7 +173,7 @@ const stats: { stat: string; label: string }[] = [
   { stat: "UK fulfilled",       label: "Designer-direct, dispatched from London" },
   { stat: "Founding designers", label: "First houses now being onboarded" },
   { stat: "Authentic",          label: "Every piece sourced from its atelier" },
-  { stat: "28 d returns",       label: "Complimentary returns window" },
+  { stat: "7 d returns",        label: "Complimentary returns window" },
 ];
 
 function StatsStrip() {
@@ -302,7 +302,7 @@ function Mission() {
 
 const confidencePoints: { title: string; body: string; icon: ReactNode }[] = [
   { title: "UK fulfilment",         body: "Pieces are dispatched from our London hub — no cross-border surprises, no customs bills on the doorstep.", icon: <IconTruck /> },
-  { title: "UK returns address",    body: "28 days to return, handled locally. Refunds typically clear within ten working days of arrival.",          icon: <IconReturn /> },
+  { title: "UK returns address",    body: "7 days to return, handled locally. Refunds typically clear within ten working days of arrival.",          icon: <IconReturn /> },
   { title: "Verified designers",    body: "Every house on the floor is vetted by our team. Provenance is documented; counterfeits don't make it in.", icon: <IconShield /> },
   { title: "Secure GBP checkout",   body: "Pay in pounds with cards, Apple Pay, or Google Pay. Payment infrastructure handled by Stripe.",            icon: <IconCard /> },
 ];

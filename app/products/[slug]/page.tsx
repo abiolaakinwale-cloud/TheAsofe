@@ -235,7 +235,7 @@ export default async function ProductPage({
             {/* Care note */}
             <p className="text-xs leading-relaxed" style={{ color: "var(--color-muted)" }}>
               Each piece is shipped from its designer of origin, accompanied by certificate of authenticity and care guidance.
-              Complimentary returns within 28 days. Items in their original condition only.
+              Complimentary returns within 7 days. Items in their original condition only.
             </p>
           </aside>
         </div>

@@ -7,7 +7,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { notifyReturnRequested } from "@/lib/notifications";
 
-const RETURN_WINDOW_DAYS = 28;
+const RETURN_WINDOW_DAYS = 7;
 
 const VALID_REASONS = [
   "sizing", "quality", "not_as_described", "arrived_damaged",

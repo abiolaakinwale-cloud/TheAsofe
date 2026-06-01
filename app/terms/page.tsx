@@ -67,7 +67,7 @@ export default function TermsPage() {
           {
             heading: "5. Returns",
             body: <p>
-              You may return any in-stock piece within 28 days of receipt under the conditions set out on our
+              You may return any in-stock piece within 7 days of receipt under the conditions set out on our
               <a href="/returns" className="lux-link" style={{ color: "var(--color-oxblood)" }}> Returns page</a>. Made-to-measure
               and personalised pieces are not eligible for return except where defective.
             </p>,

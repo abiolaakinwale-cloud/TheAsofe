@@ -124,7 +124,7 @@ export default async function BagPage() {
               </dl>
               <CheckoutButton />
               <p className="text-xs leading-relaxed mt-4" style={{ color: "var(--color-muted)" }}>
-                Each piece ships from its designer via Asofe's London fulfilment. Complimentary returns within 28 days.
+                Each piece ships from its designer via Asofe's London fulfilment. Complimentary returns within 7 days.
               </p>
             </div>
           </aside>

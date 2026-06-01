@@ -4,7 +4,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { formatPrice } from "@/lib/account";
 import { submitReturnForm } from "./actions";
 
-const RETURN_WINDOW_DAYS = 28;
+const RETURN_WINDOW_DAYS = 7;
 
 const REASONS: Array<{ value: string; label: string }> = [
   { value: "sizing",            label: "Wrong size" },

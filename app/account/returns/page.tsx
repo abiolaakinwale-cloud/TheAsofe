@@ -26,7 +26,7 @@ export default async function CustomerReturnsList() {
         <p className="text-base leading-relaxed max-w-xl" style={{ color: "var(--color-ink-soft)" }}>
           No returns yet. If something doesn&apos;t suit, you can{" "}
           <Link href="/account/orders" className="lux-link" style={{ color: "var(--color-ink)" }}>request a return</Link>{" "}
-          from any delivered order within 28 days.
+          from any delivered order within 7 days.
         </p>
       ) : (
         <ul className="space-y-px max-w-4xl">
