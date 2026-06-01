@@ -6,6 +6,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { previewPayout } from "@/lib/payouts";
 import { notifyPayoutStatement, notifyPayoutPaid } from "@/lib/notifications";
+import { logAction } from "@/lib/audit";
 
 async function requireAdmin() {
   const sb = await getServerSupabase();
@@ -78,6 +79,21 @@ export async function generatePayout(formData: FormData) {
     throw new Error(linesErr.message);
   }
 
+  await logAction({
+    action: "payout.generated",
+    targetType: "payout",
+    targetId: payout.id,
+    metadata: {
+      brand,
+      period_start: periodStart,
+      period_end: periodEnd,
+      gross: preview.gross,
+      refunds: preview.refunds,
+      net: preview.net,
+      lines: preview.lines.length,
+    },
+  });
+
   revalidatePath("/admin/payouts");
   redirect(`/admin/payouts/${payout.id}`);
 }
@@ -119,6 +135,13 @@ export async function sendPayoutStatement(id: string) {
     .from("payouts")
     .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq("id", id);
+
+  await logAction({
+    action: "payout.statement_sent",
+    targetType: "payout",
+    targetId: id,
+    metadata: { brand: payout.brand, net: payout.net_amount },
+  });
 
   revalidatePath("/admin/payouts");
   revalidatePath(`/admin/payouts/${id}`);
@@ -172,6 +195,13 @@ export async function markPayoutPaid(formData: FormData) {
     });
   }
 
+  await logAction({
+    action: "payout.marked_paid",
+    targetType: "payout",
+    targetId: id,
+    metadata: { brand: payout.brand, net: payout.net_amount, paid_via: paidVia, paid_ref: paidRef },
+  });
+
   revalidatePath("/admin/payouts");
   revalidatePath(`/admin/payouts/${id}`);
   revalidatePath("/dashboard/payouts");
@@ -188,6 +218,13 @@ export async function cancelPayout(id: string) {
     .from("payouts")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("id", id);
+
+  await logAction({
+    action: "payout.cancelled",
+    targetType: "payout",
+    targetId: id,
+    metadata: { previous_status: payout.status },
+  });
 
   revalidatePath("/admin/payouts");
   revalidatePath(`/admin/payouts/${id}`);

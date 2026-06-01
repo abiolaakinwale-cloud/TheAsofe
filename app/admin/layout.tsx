@@ -28,6 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin/users" className="lux-link">Users</Link>
             <Link href="/admin/cms" className="lux-link">CMS</Link>
             <Link href="/admin/journal" className="lux-link">Journal</Link>
+            <Link href="/admin/audit" className="lux-link">Activity</Link>
           </div>
           <form action={signOut}>
             <button type="submit" className="text-[11px] tracking-[0.18em] uppercase font-medium lux-link" style={{ color: "var(--color-muted)" }}>

@@ -8,6 +8,7 @@ import {
   notifyOrderDispatched,
   notifyOrderPacked,
 } from "@/lib/notifications";
+import { logAction } from "@/lib/audit";
 
 async function requireAdmin() {
   const sb = await getServerSupabase();
@@ -29,6 +30,9 @@ export async function setOrderStatus(id: string, status: "paid" | "packed" | "di
   if (status === "delivered")  stamp.delivered_at  = now;
   if (status === "cancelled")  stamp.cancelled_at  = now;
 
+  // Capture previous status so the audit log shows the transition
+  const { data: before } = await sb.from("orders").select("status").eq("id", id).maybeSingle();
+
   const { data: order, error } = await sb
     .from("orders")
     .update({ status, ...stamp })
@@ -42,6 +46,13 @@ export async function setOrderStatus(id: string, status: "paid" | "packed" | "di
     if (status === "dispatched") await notifyOrderDispatched({ id: order.id, customer_email: order.customer_email });
     if (status === "delivered")  await notifyOrderDelivered({ id: order.id, customer_email: order.customer_email });
   }
+
+  await logAction({
+    action: "order.status_changed",
+    targetType: "order",
+    targetId: id,
+    metadata: { from: before?.status ?? null, to: status },
+  });
 
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${id}`);
@@ -85,6 +96,13 @@ export async function dispatchOrder(formData: FormData) {
   if (order?.customer_email) {
     await notifyOrderDispatched({ id: order.id, customer_email: order.customer_email });
   }
+
+  await logAction({
+    action: "order.dispatched",
+    targetType: "order",
+    targetId: id,
+    metadata: { courier, tracking_ref: trackingRef, eta_date: eta },
+  });
 
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${id}`);

@@ -836,3 +836,33 @@ create policy "admin reads all payout lines" on public.payout_lines
   for select using (public.is_admin());
 create policy "admin writes payout lines" on public.payout_lines
   for all using (public.is_admin()) with check (public.is_admin());
+
+-- ─── Audit log ───────────────────────────────────────────────────────────────
+-- Every admin write that changes important state lands here. Denormalised
+-- actor_email so the entry survives auth.users deletion. Append-only —
+-- there's no UPDATE/DELETE policy, only INSERT (via service role) and
+-- SELECT (admin only).
+create table if not exists public.audit_log (
+  id           uuid primary key default gen_random_uuid(),
+  actor_id     uuid references auth.users(id) on delete set null,
+  actor_email  text,
+  action       text not null,                  -- e.g. "order.status_changed"
+  target_type  text,                            -- "order" | "return" | "payout" | "brand" | ...
+  target_id    text,                            -- uuid or slug as text
+  metadata     jsonb not null default '{}'::jsonb,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists audit_log_actor_idx   on public.audit_log(actor_id);
+create index if not exists audit_log_target_idx  on public.audit_log(target_type, target_id);
+create index if not exists audit_log_created_idx on public.audit_log(created_at desc);
+create index if not exists audit_log_action_idx  on public.audit_log(action);
+
+alter table public.audit_log enable row level security;
+
+drop policy if exists "admin reads audit log" on public.audit_log;
+create policy "admin reads audit log" on public.audit_log
+  for select using (public.is_admin());
+-- Intentionally no INSERT/UPDATE/DELETE policy: writes happen via service
+-- role from lib/audit.ts logAction(), and no path mutates rows after
+-- creation. RLS denies everything else.

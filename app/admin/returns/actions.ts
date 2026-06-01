@@ -5,6 +5,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { notifyReturnReceived, notifyReturnRefunded, notifyReturnRejected } from "@/lib/notifications";
+import { logAction } from "@/lib/audit";
 
 async function requireAdmin() {
   const sb = await getServerSupabase();
@@ -67,6 +68,13 @@ export async function markReturnReceived(id: string) {
       itemsLabel: await rebuildItemsLabel(id),
     });
   }
+
+  await logAction({
+    action: "return.received",
+    targetType: "return",
+    targetId: id,
+    metadata: { rma: ret.rma_number, order_id: ret.order_id },
+  });
 
   revalidatePath("/admin/returns");
   revalidatePath(`/admin/returns/${id}`);
@@ -151,6 +159,18 @@ export async function approveReturnRefund(id: string) {
     });
   }
 
+  await logAction({
+    action: "return.refund_approved",
+    targetType: "return",
+    targetId: id,
+    metadata: {
+      rma: ret.rma_number,
+      order_id: ret.order_id,
+      refund_amount: refundAmount,
+      stripe_refund_id: refund.id,
+    },
+  });
+
   revalidatePath("/admin/returns");
   revalidatePath(`/admin/returns/${id}`);
   revalidatePath(`/account/orders/${ret.order_id}`);
@@ -186,6 +206,13 @@ export async function rejectReturn(formData: FormData) {
       rejectionReason,
     });
   }
+
+  await logAction({
+    action: "return.rejected",
+    targetType: "return",
+    targetId: id,
+    metadata: { rma: ret.rma_number, order_id: ret.order_id, rejection_reason: rejectionReason },
+  });
 
   revalidatePath("/admin/returns");
   revalidatePath(`/admin/returns/${id}`);

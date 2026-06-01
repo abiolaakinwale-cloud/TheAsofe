@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
+import { logAction } from "@/lib/audit";
 
 async function requireAdmin() {
   const sb = await getServerSupabase();
@@ -45,6 +46,8 @@ export async function createBrand(formData: FormData) {
     location: origin,
   });
 
+  await logAction({ action: "brand.created", targetType: "brand", targetId: slug, metadata: { name } });
+
   revalidatePath("/admin/brands");
   revalidatePath("/admin");
   redirect("/admin/brands");
@@ -78,6 +81,13 @@ export async function updateBrand(originalSlug: string, formData: FormData) {
     })
     .eq("slug", originalSlug);
   if (error) throw new Error(error.message);
+
+  await logAction({
+    action: "brand.updated",
+    targetType: "brand",
+    targetId: originalSlug,
+    metadata: { fields_touched: Object.keys(formData).length, commission_rate: commission },
+  });
 
   revalidatePath("/admin/brands");
   revalidatePath("/admin");
