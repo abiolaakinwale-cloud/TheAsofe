@@ -20,6 +20,7 @@ export default function robots(): MetadataRoute.Robots {
           "/auth/",
           "/orders/confirmation",
           "/api/",
+          "/wishlists/",   // private-by-link, never indexed
         ],
       },
     ],

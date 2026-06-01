@@ -1074,3 +1074,30 @@ create policy "admin reads all redemptions" on public.gift_card_redemptions
   for select using (public.is_admin());
 create policy "admin writes redemptions" on public.gift_card_redemptions
   for all using (public.is_admin()) with check (public.is_admin());
+
+-- ─── Wishlist sharing ────────────────────────────────────────────────────────
+-- One shareable token per customer. The token is the only secret; lookups
+-- from the public view go through the service-role client (RLS denies the
+-- anon role) and explicitly require is_active = true.
+create table if not exists public.wishlist_shares (
+  user_id       uuid primary key references auth.users(id) on delete cascade,
+  token         text unique not null,
+  display_name  text,                                       -- shown publicly
+  message       text,                                       -- one-line intro on the share page
+  is_active     boolean not null default true,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists wishlist_shares_token_idx on public.wishlist_shares(token) where is_active;
+
+alter table public.wishlist_shares enable row level security;
+
+drop policy if exists "customer manages own wishlist share" on public.wishlist_shares;
+drop policy if exists "admin reads all wishlist shares"     on public.wishlist_shares;
+
+create policy "customer manages own wishlist share" on public.wishlist_shares
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create policy "admin reads all wishlist shares" on public.wishlist_shares
+  for select using (public.is_admin());
