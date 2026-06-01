@@ -164,6 +164,20 @@ export default async function AdminShipmentDetailPage({ params }: { params: Prom
             </dl>
           </div>
 
+          <div className="p-6" style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)" }}>
+            <p className="eyebrow mb-3" style={{ color: "var(--color-oxblood)" }}>Customs</p>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--color-muted)" }}>
+              Generate the commercial invoice the designer attaches to the consignment for HMRC clearance. Defaults are pre-filled from the catalogue; overrides via line-item edits.
+            </p>
+            <Link
+              href={`/admin/shipments/${shipment.id}/customs`}
+              className="inline-block px-5 py-2 text-[11px] tracking-[0.22em] uppercase font-medium border"
+              style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}
+            >
+              Customs declaration →
+            </Link>
+          </div>
+
           {shipment.notes && (
             <div className="p-6" style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)" }}>
               <p className="eyebrow mb-3" style={{ color: "var(--color-muted)" }}>Notes</p>

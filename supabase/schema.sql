@@ -355,6 +355,22 @@ create table if not exists public.shipment_items (
 
 create index if not exists shipment_items_shipment_idx on public.shipment_items(shipment_id);
 
+-- Customs declaration metadata for HMRC commercial invoice.
+-- HS codes default by product category if not specified per-line; designer
+-- can override on a row-by-row basis from the admin UI.
+alter table public.shipment_items
+  add column if not exists hs_code             text,
+  add column if not exists declared_unit_value int,                 -- pence, GBP, per piece
+  add column if not exists country_of_origin   text,                -- ISO-3166 alpha-2
+  add column if not exists weight_grams        int,                 -- per piece
+  add column if not exists customs_description text;                -- plain-English line item description
+
+alter table public.shipments
+  add column if not exists invoice_number      text,                -- "ASF-2026-001"
+  add column if not exists incoterm            text default 'DDP',  -- DDP / DAP / EXW etc.
+  add column if not exists consignor_address   text,                -- designer pickup address
+  add column if not exists commercial_purpose  text default 'Sale of goods';
+
 alter table public.shipments      enable row level security;
 alter table public.shipment_items enable row level security;
 
