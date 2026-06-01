@@ -938,3 +938,59 @@ create policy "admin reads all reviews" on public.reviews
 
 create policy "admin updates reviews" on public.reviews
   for all using (public.is_admin()) with check (public.is_admin());
+
+-- ─── Designer Q&A ────────────────────────────────────────────────────────────
+-- Customer questions on a product, answered by the seller. Once answered the
+-- thread is public on the product page — future buyers benefit from the
+-- previous one's question. brand_slug denormalised so the seller can list
+-- all their pending threads cheaply.
+create table if not exists public.designer_questions (
+  id              uuid primary key default gen_random_uuid(),
+  product_slug    text not null references public.products(slug) on delete cascade,
+  brand_slug      text not null references public.brands(slug) on delete cascade,
+  customer_id     uuid not null references auth.users(id) on delete cascade,
+  customer_name   text,
+  question        text not null,
+  answer          text,
+  status          text not null default 'pending'
+                    check (status in ('pending','answered','hidden','flagged')),
+  answered_by     uuid references auth.users(id) on delete set null,
+  answered_at     timestamptz,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+create index if not exists designer_questions_product_idx  on public.designer_questions(product_slug, status);
+create index if not exists designer_questions_brand_idx    on public.designer_questions(brand_slug, status);
+create index if not exists designer_questions_customer_idx on public.designer_questions(customer_id);
+
+alter table public.designer_questions enable row level security;
+
+drop policy if exists "anyone reads answered questions"      on public.designer_questions;
+drop policy if exists "customer reads own questions"         on public.designer_questions;
+drop policy if exists "customer writes own questions"        on public.designer_questions;
+drop policy if exists "seller reads brand questions"         on public.designer_questions;
+drop policy if exists "seller answers brand questions"       on public.designer_questions;
+drop policy if exists "admin reads all questions"            on public.designer_questions;
+drop policy if exists "admin updates questions"              on public.designer_questions;
+
+create policy "anyone reads answered questions" on public.designer_questions
+  for select using (status = 'answered');
+
+create policy "customer reads own questions" on public.designer_questions
+  for select using (customer_id = auth.uid());
+
+create policy "customer writes own questions" on public.designer_questions
+  for insert with check (customer_id = auth.uid());
+
+create policy "seller reads brand questions" on public.designer_questions
+  for select using (brand_slug = public.current_brand());
+
+create policy "seller answers brand questions" on public.designer_questions
+  for update using (brand_slug = public.current_brand()) with check (brand_slug = public.current_brand());
+
+create policy "admin reads all questions" on public.designer_questions
+  for select using (public.is_admin());
+
+create policy "admin updates questions" on public.designer_questions
+  for all using (public.is_admin()) with check (public.is_admin());

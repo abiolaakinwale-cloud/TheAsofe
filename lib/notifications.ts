@@ -413,6 +413,58 @@ export async function notifyPayoutPaid(args: {
   });
 }
 
+// ─── Designer Q&A ──────────────────────────────────────────────────────────
+
+export async function notifyDesignerQuestion(args: {
+  sellerEmail: string;
+  productName: string;
+  productSlug: string;
+  customerName: string;
+  question: string;
+  brandSlug: string;
+}): Promise<void> {
+  await send({
+    to: args.sellerEmail,
+    subject: `New question on ${args.productName}`,
+    text: [
+      `A customer has asked a question about one of your pieces.`,
+      ``,
+      `Piece: ${args.productName}`,
+      `Customer: ${args.customerName}`,
+      ``,
+      `Question:`,
+      `${args.question}`,
+      ``,
+      `Answer at: ${SITE_URL}/dashboard/questions`,
+    ].join("\n"),
+  });
+}
+
+export async function notifyQuestionAnswered(args: {
+  customerEmail: string;
+  productName: string;
+  productSlug: string;
+  question: string;
+  answer: string;
+}): Promise<void> {
+  await send({
+    to: args.customerEmail,
+    subject: `Your question about ${args.productName} has been answered`,
+    text: [
+      `The designer has replied to your question about ${args.productName}.`,
+      ``,
+      `Your question:`,
+      `${args.question}`,
+      ``,
+      `Designer's answer:`,
+      `${args.answer}`,
+      ``,
+      `See the full thread (and continue browsing) at:`,
+      `${SITE_URL}/products/${args.productSlug}#questions`,
+    ].join("\n"),
+  });
+}
+
 // ─── Low stock ─────────────────────────────────────────────────────────────
 
 export async function notifyLowStock(args: {

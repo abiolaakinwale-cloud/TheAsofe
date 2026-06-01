@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getServerSupabase } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import {
   getBrand,
@@ -15,7 +16,9 @@ import { getStock } from "@/lib/bag";
 import { getWishlistSlugs } from "@/lib/wishlist";
 import { SITE_URL, SITE_NAME, absoluteUrl } from "@/lib/site";
 import { getProductReviews, getProductAggregate } from "@/lib/reviews";
+import { getProductQuestions } from "@/lib/questions";
 import AddToBag from "./_components/AddToBag";
+import { askDesigner } from "./_components/actions";
 import ProductCard from "@/components/ProductCard";
 import Stars from "@/components/Stars";
 
@@ -53,12 +56,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ asked?: string; ask_error?: string }>;
+}) {
   const { slug } = await params;
+  const { asked, ask_error } = await searchParams;
   const product = await getProduct(slug);
   if (!product) notFound();
 
-  const [brand, category, related, sellers, stock, wishlistSlugs, reviews, aggregate] = await Promise.all([
+  const sb = await getServerSupabase();
+  const { data: { user } } = await sb.auth.getUser();
+
+  const [brand, category, related, sellers, stock, wishlistSlugs, reviews, aggregate, questions] = await Promise.all([
     getBrand(product.brand),
     getCategory(product.category),
     getProductsByBrand(product.brand),
@@ -67,6 +80,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getWishlistSlugs(),
     getProductReviews(slug),
     getProductAggregate(slug),
+    getProductQuestions(slug),
   ]);
   const inWishlist = wishlistSlugs.has(slug);
   const seller = sellers.find(s => s.slug === product.seller);
@@ -286,6 +300,116 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 ))}
               </ul>
             ) : null}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Designer Q&A ────────────────────────────────────────── */}
+      <section id="questions" className="py-20 lg:py-28 border-t" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-cream)" }}>
+        <div className="max-w-[88rem] mx-auto px-6 lg:px-12 grid lg:grid-cols-[1fr_2fr] gap-12 lg:gap-20">
+          <div>
+            <p className="eyebrow mb-3" style={{ color: "var(--color-cobalt)" }}>Ask the designer</p>
+            <h2 className="display text-3xl lg:text-5xl mb-6" style={{ color: "var(--color-ink)" }}>
+              Questions, answered.
+            </h2>
+            <p className="text-base leading-relaxed max-w-md" style={{ color: "var(--color-ink-soft)" }}>
+              Anything you&apos;d like to know about the fit, fabric, or how this piece is made? Send the question to{" "}
+              {brand?.name ?? "the atelier"} directly. Answered questions appear here for future customers.
+            </p>
+          </div>
+
+          <div>
+            {asked === "1" && (
+              <div className="mb-8 p-5" style={{ backgroundColor: "var(--color-ground)" }}>
+                <p className="eyebrow mb-2" style={{ color: "var(--color-emerald)" }}>Question sent</p>
+                <p className="text-sm" style={{ color: "var(--color-ink)" }}>
+                  Your question has been sent to {brand?.name ?? "the designer"}. Once they reply you&apos;ll receive an email, and the answer appears below.
+                </p>
+              </div>
+            )}
+            {ask_error && (
+              <div className="mb-8 p-5" style={{ backgroundColor: "var(--color-ground)" }}>
+                <p className="text-sm" style={{ color: "var(--color-oxblood)" }}>
+                  Couldn&apos;t send: {decodeURIComponent(ask_error)}
+                </p>
+              </div>
+            )}
+
+            {questions.length > 0 ? (
+              <ul className="space-y-10 mb-12">
+                {questions.map(q => (
+                  <li key={q.id} className="pb-10 border-b" style={{ borderColor: "var(--color-rule)" }}>
+                    <p className="text-[10px] tracking-[0.18em] uppercase mb-2" style={{ color: "var(--color-muted)" }}>
+                      {q.customer_name ?? "Anonymous"} asked
+                    </p>
+                    <p className="serif italic text-lg mb-5" style={{ color: "var(--color-ink)" }}>
+                      &ldquo;{q.question}&rdquo;
+                    </p>
+                    <p className="text-[10px] tracking-[0.18em] uppercase mb-2" style={{ color: "var(--color-oxblood)" }}>
+                      {brand?.name ?? "Atelier"} replied
+                    </p>
+                    <p className="text-base leading-relaxed" style={{ color: "var(--color-ink-soft)" }}>
+                      {q.answer}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mb-12 text-sm leading-relaxed" style={{ color: "var(--color-ink-soft)" }}>
+                No questions answered yet. Be the first — answered Q&amp;A appears publicly here so other customers benefit too.
+              </p>
+            )}
+
+            {/* Ask form */}
+            {user ? (
+              <form action={askDesigner} className="space-y-5">
+                <input type="hidden" name="productSlug" value={slug} />
+                <label className="block">
+                  <span className="block mb-2 eyebrow" style={{ color: "var(--color-emerald)" }}>Your question</span>
+                  <textarea
+                    name="question"
+                    required
+                    minLength={8}
+                    maxLength={1000}
+                    rows={4}
+                    placeholder="e.g. Does the silk crepe stretch at all, or does it sit close to the body?"
+                    className="w-full border bg-transparent p-3 text-base leading-relaxed"
+                    style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+                  />
+                </label>
+                <label className="block">
+                  <span className="block mb-2 eyebrow" style={{ color: "var(--color-emerald)" }}>Display name</span>
+                  <input
+                    name="displayName"
+                    maxLength={60}
+                    defaultValue={user.email?.split("@")[0] ?? ""}
+                    className="w-full h-12 border bg-transparent px-3 text-base"
+                    style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+                  />
+                  <span className="block mt-2 text-xs" style={{ color: "var(--color-muted)" }}>
+                    Shown publicly with your question once answered. Use a first name or alias if you prefer.
+                  </span>
+                </label>
+                <button
+                  type="submit"
+                  className="px-8 py-4 text-[12px] tracking-[0.22em] uppercase font-medium"
+                  style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}
+                >
+                  Send to the designer
+                </button>
+              </form>
+            ) : (
+              <div className="p-6" style={{ backgroundColor: "var(--color-ground)" }}>
+                <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--color-ink)" }}>
+                  <Link href={`/signin?next=/products/${slug}%23questions`} className="lux-link" style={{ color: "var(--color-ink)" }}>
+                    Sign in
+                  </Link>{" "}or{" "}
+                  <Link href={`/signin?next=/products/${slug}%23questions`} className="lux-link" style={{ color: "var(--color-ink)" }}>
+                    create an account
+                  </Link>{" "}to ask {brand?.name ?? "the designer"} a question. We&apos;ll email you when they reply.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
