@@ -45,6 +45,14 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
     .limit(1)
     .maybeSingle();
 
+  // Pre-existing reviews for this order — used to render "✓ Reviewed" vs CTA
+  const { data: existingReviews } = await sb
+    .from("reviews")
+    .select("product_slug")
+    .eq("order_id", id);
+  const reviewedSlugs = new Set((existingReviews ?? []).map(r => r.product_slug));
+  const canReview = order.status === "delivered";
+
   const returnEligible =
     !returnRow &&
     (order.status === "delivered" || order.status === "dispatched") &&
@@ -178,6 +186,21 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
                       <p className="text-[10px] tracking-[0.18em] uppercase mt-2" style={{ color: "var(--color-emerald)" }}>
                         Made to order · ships in {it.lead_time_weeks} {it.lead_time_weeks === 1 ? "week" : "weeks"}
                       </p>
+                    )}
+                    {canReview && (
+                      reviewedSlugs.has(it.product_slug) ? (
+                        <p className="text-[10px] tracking-[0.18em] uppercase mt-3" style={{ color: "var(--color-emerald)" }}>
+                          ✓ Reviewed
+                        </p>
+                      ) : (
+                        <Link
+                          href={`/account/orders/${order.id}/review?product=${it.product_slug}`}
+                          className="inline-block text-[10px] tracking-[0.18em] uppercase mt-3 lux-link"
+                          style={{ color: "var(--color-oxblood)" }}
+                        >
+                          Write a review →
+                        </Link>
+                      )
                     )}
                   </div>
                   <p className="text-sm tabular-nums" style={{ color: "var(--color-ink)" }}>

@@ -7,8 +7,10 @@ import { getSiteSettings } from "@/lib/cms";
 import { getWishlistSlugs } from "@/lib/wishlist";
 import { paginate } from "@/lib/pagination";
 import { SITE_URL, SITE_NAME, absoluteUrl } from "@/lib/site";
+import { getBrandAggregate } from "@/lib/reviews";
 import ProductCard from "@/components/ProductCard";
 import Pagination from "@/components/Pagination";
+import Stars from "@/components/Stars";
 
 export async function generateStaticParams() {
   const brands = await getBrands();
@@ -61,12 +63,13 @@ export default async function BrandPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
-  const [brand, items, brands, settings, wishlistSlugs] = await Promise.all([
+  const [brand, items, brands, settings, wishlistSlugs, brandRating] = await Promise.all([
     getBrand(slug),
     getProductsByBrand(slug),
     getBrands(),
     getSiteSettings(),
     getWishlistSlugs(),
+    getBrandAggregate(slug),
   ]);
   if (!brand) notFound();
   const pageData = paginate(items, sp.page);
@@ -103,6 +106,14 @@ export default async function BrandPage({
             <p className="serif text-xl lg:text-2xl mb-8 max-w-md italic" style={{ color: isDark ? "rgba(255,255,255,0.85)" : "var(--color-ink-soft)" }}>
               {brand.tagline}
             </p>
+            {brandRating.count > 0 && (
+              <div className="mb-8 flex items-center gap-3 flex-wrap">
+                <Stars value={brandRating.average} size="md" />
+                <span className="text-xs tabular-nums" style={{ color: isDark ? "rgba(255,255,255,0.85)" : "var(--color-ink-soft)" }}>
+                  {brandRating.average.toFixed(1)} · {brandRating.count} verified {brandRating.count === 1 ? "review" : "reviews"} across the collection
+                </span>
+              </div>
+            )}
             <p className="text-base lg:text-lg leading-relaxed max-w-lg" style={{ color: isDark ? "rgba(255,255,255,0.75)" : "var(--color-ink-soft)" }}>
               {brand.story}
             </p>

@@ -882,3 +882,56 @@ create policy "admin reads audit log" on public.audit_log
 -- Intentionally no INSERT/UPDATE/DELETE policy: writes happen via service
 -- role from lib/audit.ts logAction(), and no path mutates rows after
 -- creation. RLS denies everything else.
+
+-- ─── Reviews ─────────────────────────────────────────────────────────────────
+-- Verified-purchase product reviews. The (customer, product, order) triple is
+-- unique so a customer can review the same piece across separate orders but
+-- not multiple times for one order. brand_slug is denormalised for fast
+-- brand-aggregate queries on the public site.
+create table if not exists public.reviews (
+  id            uuid primary key default gen_random_uuid(),
+  customer_id   uuid not null references auth.users(id) on delete cascade,
+  product_slug  text not null references public.products(slug) on delete cascade,
+  brand_slug    text not null references public.brands(slug) on delete cascade,
+  order_id      uuid not null references public.orders(id) on delete restrict,
+  rating        int  not null check (rating between 1 and 5),
+  title         text,
+  body          text,
+  status        text not null default 'published'
+                  check (status in ('published','hidden','flagged')),
+  customer_name text,                                     -- snapshot of display name at write time
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (customer_id, product_slug, order_id)
+);
+
+create index if not exists reviews_product_idx  on public.reviews(product_slug, status);
+create index if not exists reviews_brand_idx    on public.reviews(brand_slug, status);
+create index if not exists reviews_customer_idx on public.reviews(customer_id);
+
+alter table public.reviews enable row level security;
+
+drop policy if exists "anyone reads published reviews" on public.reviews;
+drop policy if exists "customer reads own reviews"     on public.reviews;
+drop policy if exists "customer writes own reviews"    on public.reviews;
+drop policy if exists "customer updates own reviews"   on public.reviews;
+drop policy if exists "admin reads all reviews"        on public.reviews;
+drop policy if exists "admin updates reviews"          on public.reviews;
+
+create policy "anyone reads published reviews" on public.reviews
+  for select using (status = 'published');
+
+create policy "customer reads own reviews" on public.reviews
+  for select using (customer_id = auth.uid());
+
+create policy "customer writes own reviews" on public.reviews
+  for insert with check (customer_id = auth.uid());
+
+create policy "customer updates own reviews" on public.reviews
+  for update using (customer_id = auth.uid()) with check (customer_id = auth.uid());
+
+create policy "admin reads all reviews" on public.reviews
+  for select using (public.is_admin());
+
+create policy "admin updates reviews" on public.reviews
+  for all using (public.is_admin()) with check (public.is_admin());

@@ -14,8 +14,10 @@ import { formatPrice } from "@/lib/data";
 import { getStock } from "@/lib/bag";
 import { getWishlistSlugs } from "@/lib/wishlist";
 import { SITE_URL, SITE_NAME, absoluteUrl } from "@/lib/site";
+import { getProductReviews, getProductAggregate } from "@/lib/reviews";
 import AddToBag from "./_components/AddToBag";
 import ProductCard from "@/components/ProductCard";
+import Stars from "@/components/Stars";
 
 export async function generateStaticParams() {
   const products = await getProducts();
@@ -56,13 +58,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await getProduct(slug);
   if (!product) notFound();
 
-  const [brand, category, related, sellers, stock, wishlistSlugs] = await Promise.all([
+  const [brand, category, related, sellers, stock, wishlistSlugs, reviews, aggregate] = await Promise.all([
     getBrand(product.brand),
     getCategory(product.category),
     getProductsByBrand(product.brand),
     getSellers(),
     getStock(slug),
     getWishlistSlugs(),
+    getProductReviews(slug),
+    getProductAggregate(slug),
   ]);
   const inWishlist = wishlistSlugs.has(slug);
   const seller = sellers.find(s => s.slug === product.seller);
@@ -87,6 +91,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       itemCondition: "https://schema.org/NewCondition",
       ...(brand && { seller: { "@type": "Organization", name: brand.name } }),
     },
+    ...(aggregate.count > 0 && {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: aggregate.average,
+        reviewCount: aggregate.count,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    }),
   };
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -153,6 +166,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               )}
               <h1 className="display text-3xl lg:text-5xl mb-3 max-w-[18ch]">{product.name}</h1>
               <p className="text-lg tabular-nums" style={{ color: "var(--color-ink)" }}>{formatPrice(product.price)}</p>
+              {aggregate.count > 0 && (
+                <div className="mt-2">
+                  <a href="#reviews" className="lux-link">
+                    <Stars value={aggregate.average} size="sm" showValue count={aggregate.count} />
+                  </a>
+                </div>
+              )}
               {product.newArrival && (
                 <span className="inline-block mt-3 px-2.5 py-1 text-[10px] tracking-[0.18em] uppercase font-medium"
                   style={{ backgroundColor: "var(--color-saffron)", color: "var(--color-ink)" }}>
@@ -204,6 +224,69 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               Complimentary returns within 28 days. Items in their original condition only.
             </p>
           </aside>
+        </div>
+      </section>
+
+      {/* ─── Reviews ─────────────────────────────────────────────── */}
+      <section id="reviews" className="py-20 lg:py-28 border-t" style={{ borderColor: "var(--color-rule)", backgroundColor: "var(--color-ground)" }}>
+        <div className="max-w-[88rem] mx-auto px-6 lg:px-12 grid lg:grid-cols-[1fr_2fr] gap-12 lg:gap-20">
+          <div>
+            <p className="eyebrow mb-3" style={{ color: "var(--color-emerald)" }}>What customers say</p>
+            <h2 className="display text-3xl lg:text-5xl mb-6" style={{ color: "var(--color-ink)" }}>
+              {aggregate.count > 0 ? `${aggregate.average.toFixed(1)} of 5` : "No reviews yet"}.
+            </h2>
+            {aggregate.count > 0 ? (
+              <>
+                <Stars value={aggregate.average} size="lg" />
+                <p className="text-sm mt-3" style={{ color: "var(--color-ink-soft)" }}>
+                  Based on {aggregate.count} verified {aggregate.count === 1 ? "purchase" : "purchases"}.
+                </p>
+                <ul className="mt-8 space-y-2 text-xs" style={{ color: "var(--color-muted)" }}>
+                  {[5, 4, 3, 2, 1].map(star => {
+                    const n = aggregate.distribution[star - 1] ?? 0;
+                    const pct = aggregate.count > 0 ? (n / aggregate.count) * 100 : 0;
+                    return (
+                      <li key={star} className="flex items-center gap-3">
+                        <span className="w-12 tabular-nums">{star} ★</span>
+                        <span className="flex-1 h-1.5 relative" style={{ backgroundColor: "var(--color-rule)" }}>
+                          <span className="absolute inset-y-0 left-0" style={{ width: `${pct}%`, backgroundColor: "var(--color-saffron)" }} />
+                        </span>
+                        <span className="w-8 text-right tabular-nums">{n}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            ) : (
+              <p className="text-sm leading-relaxed" style={{ color: "var(--color-ink-soft)" }}>
+                Be the first to write a review. Reviews are verified — only customers who have purchased and received the piece can leave one.
+              </p>
+            )}
+          </div>
+
+          <div>
+            {reviews.length > 0 ? (
+              <ul className="space-y-10">
+                {reviews.map(rv => (
+                  <li key={rv.id} className="pb-10 border-b" style={{ borderColor: "var(--color-rule)" }}>
+                    <div className="flex items-baseline gap-4 mb-3 flex-wrap">
+                      <Stars value={rv.rating} size="sm" />
+                      <span className="text-[10px] tracking-[0.18em] uppercase" style={{ color: "var(--color-emerald)" }}>
+                        Verified purchase
+                      </span>
+                    </div>
+                    {rv.title && <p className="display text-xl mb-2" style={{ color: "var(--color-ink)" }}>{rv.title}</p>}
+                    {rv.body && <p className="text-base leading-relaxed mb-4" style={{ color: "var(--color-ink-soft)" }}>{rv.body}</p>}
+                    <p className="text-xs" style={{ color: "var(--color-muted)" }}>
+                      {rv.customer_name ?? "Anonymous"}
+                      {" · "}
+                      {new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(rv.created_at))}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         </div>
       </section>
 
