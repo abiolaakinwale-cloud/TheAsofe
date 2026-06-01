@@ -413,6 +413,49 @@ export async function notifyPayoutPaid(args: {
   });
 }
 
+// ─── Gift cards ────────────────────────────────────────────────────────────
+
+export async function notifyGiftCardIssued(args: {
+  toEmail: string;
+  toName?: string | null;
+  fromName?: string | null;
+  code: string;
+  amountPence: number;
+  message?: string | null;
+  expiresAt?: string | null;
+}): Promise<void> {
+  const greeting = args.toName ? `Dear ${args.toName},` : `Hello,`;
+  const intro = args.fromName
+    ? `${args.fromName} has sent you an Asofe gift card worth ${formatPrice(args.amountPence / 100)}.`
+    : `Your Asofe gift card is ready — worth ${formatPrice(args.amountPence / 100)}.`;
+
+  await send({
+    to: args.toEmail,
+    subject: args.fromName
+      ? `${args.fromName} sent you an Asofe gift card`
+      : `Your Asofe gift card · ${formatPrice(args.amountPence / 100)}`,
+    text: [
+      greeting,
+      ``,
+      intro,
+      ``,
+      args.message ? `Personal note:` : ``,
+      args.message ? `"${args.message}"` : ``,
+      args.message ? `` : ``,
+      `Your code:`,
+      ``,
+      `  ${args.code}`,
+      ``,
+      `Apply it at checkout — paste the code on the bag page and it offsets your order total.`,
+      args.expiresAt ? `Valid until ${args.expiresAt}.` : ``,
+      ``,
+      `Begin browsing: ${SITE_URL}`,
+      ``,
+      `Questions? Write to correspondence@theasofe.com.`,
+    ].filter(Boolean).join("\n"),
+  });
+}
+
 // ─── Designer Q&A ──────────────────────────────────────────────────────────
 
 export async function notifyDesignerQuestion(args: {

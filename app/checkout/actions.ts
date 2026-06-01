@@ -6,6 +6,7 @@ import { getStripe, isStripeConfigured, toMinor } from "@/lib/stripe";
 import { getEnrichedBag } from "@/lib/bag";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
+import { readAppliedGiftCard } from "@/app/bag/gift-card-actions";
 
 export type CheckoutError = { ok: false; error: string };
 
@@ -23,6 +24,11 @@ export async function startCheckout(): Promise<CheckoutError | void> {
   const sbAuth = await getServerSupabase();
   const { data: { user } } = await sbAuth.auth.getUser();
 
+  // Resolve any gift-card applied via the bag cookie. Recomputed here against
+  // the bag's current state so a stale cookie can't over-redeem.
+  const giftCard = await readAppliedGiftCard();
+  const giftDiscountPounds = giftCard ? Math.floor(giftCard.applicable_pence / 100) : 0;
+
   // 1. Create an order row in 'pending'. Items snapshot price/name/brand so a
   //    later product edit doesn't change historical orders.
   const { data: order, error: orderErr } = await sb
@@ -31,10 +37,12 @@ export async function startCheckout(): Promise<CheckoutError | void> {
       customer_id: user?.id ?? null,
       customer_email: user?.email ?? "guest@asofe.local", // placeholder; Stripe captures the real email
       subtotal: bag.subtotal,
-      total: bag.subtotal,
+      total: bag.subtotal - giftDiscountPounds,
       shipping: 0,
       currency: "GBP",
       status: "pending",
+      gift_card_code: giftCard?.code ?? null,
+      gift_card_discount: giftDiscountPounds,
     })
     .select("id")
     .single();
@@ -72,10 +80,31 @@ export async function startCheckout(): Promise<CheckoutError | void> {
   const host = hdrs.get("host") ?? "theasofe.vercel.app";
   const origin = `${proto}://${host}`;
 
+  // If a gift card is applied, create a single-use Stripe coupon for the
+  // exact discount and reference it on the session.
+  let stripeDiscount: { coupon: string } | undefined;
+  if (giftCard && giftCard.applicable_pence > 0) {
+    try {
+      const coupon = await stripe.coupons.create({
+        amount_off: giftCard.applicable_pence,
+        currency: "gbp",
+        duration: "once",
+        name: `Gift card ${giftCard.code.slice(-9)}`,
+        metadata: { gift_card_code: giftCard.code, order_id: order.id },
+      });
+      stripeDiscount = { coupon: coupon.id };
+    } catch (err) {
+      console.error("stripe coupon create failed", err);
+      // Fall through — order continues without the discount. Better to charge
+      // full price than fail the whole checkout for a card-application bug.
+    }
+  }
+
   let session;
   try {
     session = await stripe.checkout.sessions.create({
       mode: "payment",
+      discounts: stripeDiscount ? [stripeDiscount] : undefined,
       line_items: bag.items.map(it => ({
         price_data: {
           currency: "gbp",
@@ -93,7 +122,10 @@ export async function startCheckout(): Promise<CheckoutError | void> {
         },
         quantity: it.qty,
       })),
-      metadata: { order_id: order.id },
+      metadata: {
+        order_id: order.id,
+        ...(giftCard && { gift_card_code: giftCard.code, gift_card_discount_pence: String(giftCard.applicable_pence) }),
+      },
       payment_intent_data: { metadata: { order_id: order.id } },
       shipping_address_collection: {
         allowed_countries: ["GB", "IE", "FR", "DE", "NL", "BE", "IT", "ES", "US", "CA"],

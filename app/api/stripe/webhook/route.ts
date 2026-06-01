@@ -41,6 +41,67 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
+
+        // ── Branch: gift card purchase (no order_id) ───────────────
+        if (session.metadata?.gift_card_purchase === "1") {
+          const amountPence    = Number(session.metadata.amount_pence || 0);
+          const recipientEmail = session.metadata.recipient_email || "";
+          const recipientName  = session.metadata.recipient_name || null;
+          const fromName       = session.metadata.from_name || null;
+          const message        = session.metadata.message || null;
+          const sendDate       = session.metadata.send_date || null;
+          const purchaserId    = session.metadata.purchaser_user_id || null;
+          if (!amountPence || !recipientEmail) {
+            console.warn("gift-card session missing amount/recipient", session.id);
+            break;
+          }
+
+          const { generateGiftCardCode } = await import("@/lib/gift-cards");
+          const { notifyGiftCardIssued }  = await import("@/lib/notifications");
+
+          const code = generateGiftCardCode();
+          const expiresAt = new Date(Date.now() + 365 * 86_400_000).toISOString().slice(0, 10);
+          const sendImmediately = !sendDate || sendDate <= new Date().toISOString().slice(0, 10);
+
+          const { data: card, error: cardErr } = await sb.from("gift_cards").insert({
+            code,
+            initial_value_pence: amountPence,
+            balance_pence: amountPence,
+            currency: "GBP",
+            purchaser_email: session.customer_details?.email ?? null,
+            purchaser_user_id: purchaserId || null,
+            recipient_email: recipientEmail,
+            recipient_name: recipientName,
+            personal_message: message,
+            scheduled_send_at: sendImmediately ? null : sendDate,
+            delivered_at: sendImmediately ? new Date().toISOString() : null,
+            expires_at: expiresAt,
+          }).select("id").single();
+          if (cardErr) {
+            console.error("gift card insert failed", cardErr);
+            break;
+          }
+
+          if (sendImmediately) {
+            await notifyGiftCardIssued({
+              toEmail: recipientEmail,
+              toName: recipientName,
+              fromName,
+              code,
+              amountPence,
+              message,
+              expiresAt,
+            });
+          }
+          // For scheduled cards: a daily cron picks them up at scheduled_send_at
+          // and fires notifyGiftCardIssued + stamps delivered_at. See
+          // /api/cron/gift-card-delivery (TODO if scheduling is exercised).
+
+          console.log("gift card", card.id, "issued for", recipientEmail, "code", code);
+          break;
+        }
+
+        // ── Branch: regular order ──────────────────────────────────
         const orderId = session.metadata?.order_id;
         if (!orderId) {
           console.warn("checkout.session.completed without order_id metadata", session.id);
@@ -142,6 +203,33 @@ export async function POST(request: NextRequest) {
         };
         await notifyOrderPlacedCustomer(summary);
         await notifyOrderPlacedAdmin(summary);
+
+        // 6. If a gift card was applied to this order, finalise the redemption
+        //    by recording a gift_card_redemptions row and decrementing the
+        //    card balance. Done after the order is marked paid so a webhook
+        //    retry doesn't double-spend the card.
+        if (order.gift_card_code && order.gift_card_discount > 0) {
+          const discountPence = order.gift_card_discount * 100;
+          const { data: card } = await sb
+            .from("gift_cards")
+            .select("id, balance_pence")
+            .eq("code", order.gift_card_code)
+            .maybeSingle();
+          if (card && card.balance_pence >= discountPence) {
+            await sb.from("gift_card_redemptions").insert({
+              gift_card_id: card.id,
+              order_id: order.id,
+              amount_pence: discountPence,
+            });
+            const newBalance = card.balance_pence - discountPence;
+            await sb.from("gift_cards").update({
+              balance_pence: newBalance,
+              status: newBalance === 0 ? "fully_redeemed" : "active",
+              updated_at: new Date().toISOString(),
+            }).eq("id", card.id);
+          }
+        }
+
         break;
       }
 

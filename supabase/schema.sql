@@ -1002,3 +1002,75 @@ create policy "admin reads all questions" on public.designer_questions
 
 create policy "admin updates questions" on public.designer_questions
   for all using (public.is_admin()) with check (public.is_admin());
+
+-- ─── Gift cards ──────────────────────────────────────────────────────────────
+-- Issued on successful Stripe Checkout when metadata.gift_card_purchase='1'.
+-- Redeemed at /bag by pasting the code; the bag/checkout flow applies the
+-- card balance against the order total (capped so at least £0.30 still
+-- runs through Stripe — its minimum charge for GBP).
+create table if not exists public.gift_cards (
+  id                   uuid primary key default gen_random_uuid(),
+  code                 text unique not null,                  -- ASOFE-XXXX-XXXX-XXXX
+  initial_value_pence  int  not null check (initial_value_pence > 0),
+  balance_pence        int  not null check (balance_pence >= 0),
+  currency             text not null default 'GBP',
+  status               text not null default 'active'
+                         check (status in ('active','fully_redeemed','cancelled','refunded')),
+  purchaser_email      text,
+  purchaser_user_id    uuid references auth.users(id) on delete set null,
+  recipient_email      text,
+  recipient_name       text,
+  personal_message     text,
+  issued_via_order_id  uuid references public.orders(id) on delete set null,
+  scheduled_send_at    date,                                  -- null = send immediately
+  delivered_at         timestamptz,
+  expires_at           date,                                  -- 12 months from issue by default
+  created_at           timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+create index if not exists gift_cards_code_idx        on public.gift_cards(code);
+create index if not exists gift_cards_purchaser_idx   on public.gift_cards(purchaser_user_id);
+create index if not exists gift_cards_status_idx      on public.gift_cards(status);
+
+create table if not exists public.gift_card_redemptions (
+  id            uuid primary key default gen_random_uuid(),
+  gift_card_id  uuid not null references public.gift_cards(id) on delete restrict,
+  order_id      uuid not null references public.orders(id) on delete cascade,
+  amount_pence  int  not null check (amount_pence > 0),
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists gift_card_redemptions_card_idx  on public.gift_card_redemptions(gift_card_id);
+create index if not exists gift_card_redemptions_order_idx on public.gift_card_redemptions(order_id);
+
+-- Order gains the snapshot of the applied gift card so the receipt + admin
+-- view can show the breakdown clearly.
+alter table public.orders
+  add column if not exists gift_card_code        text,
+  add column if not exists gift_card_discount    int not null default 0;
+
+alter table public.gift_cards            enable row level security;
+alter table public.gift_card_redemptions enable row level security;
+
+drop policy if exists "purchaser reads own gift cards"     on public.gift_cards;
+drop policy if exists "recipient reads gift card by code"  on public.gift_cards;
+drop policy if exists "admin reads all gift cards"         on public.gift_cards;
+drop policy if exists "admin writes gift cards"            on public.gift_cards;
+drop policy if exists "admin reads all redemptions"        on public.gift_card_redemptions;
+drop policy if exists "admin writes redemptions"           on public.gift_card_redemptions;
+
+create policy "purchaser reads own gift cards" on public.gift_cards
+  for select using (purchaser_user_id = auth.uid());
+-- Recipient lookup by code happens via the service-role flow at /bag, so
+-- no SELECT policy needed for that path (RLS is bypassed by the admin client).
+
+create policy "admin reads all gift cards" on public.gift_cards
+  for select using (public.is_admin());
+create policy "admin writes gift cards" on public.gift_cards
+  for all using (public.is_admin()) with check (public.is_admin());
+
+create policy "admin reads all redemptions" on public.gift_card_redemptions
+  for select using (public.is_admin());
+create policy "admin writes redemptions" on public.gift_card_redemptions
+  for all using (public.is_admin()) with check (public.is_admin());

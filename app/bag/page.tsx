@@ -4,12 +4,20 @@ import type { Metadata } from "next";
 import { getEnrichedBag } from "@/lib/bag";
 import { formatPrice } from "@/lib/data";
 import { removeFromBag, updateBagQty } from "./actions";
+import { applyGiftCard, removeGiftCard, readAppliedGiftCard } from "./gift-card-actions";
+import { formatGbpPence } from "@/lib/gift-cards";
 import CheckoutButton from "./CheckoutButton";
 
 export const metadata: Metadata = { title: "Your bag" };
 
+async function applyAction(formData: FormData) {
+  "use server";
+  await applyGiftCard(formData);
+}
+
 export default async function BagPage() {
   const bag = await getEnrichedBag();
+  const giftCard = await readAppliedGiftCard();
 
   if (bag.items.length === 0) {
     return (
@@ -119,10 +127,56 @@ export default async function BagPage() {
               <dl className="space-y-4 text-base">
                 <Row k="Subtotal"  v={formatPrice(bag.subtotal)} />
                 <Row k="Shipping" v="Calculated at checkout" muted />
+                {giftCard && giftCard.applicable_pence > 0 && (
+                  <Row k={`Gift card · ${giftCard.code.slice(-9)}`} v={`−${formatGbpPence(giftCard.applicable_pence)}`} />
+                )}
                 <hr style={{ borderColor: "var(--color-rule)" }} />
-                <Row k="Total"     v={formatPrice(bag.subtotal)} bold />
+                <Row
+                  k="Total"
+                  v={formatPrice(bag.subtotal - Math.floor((giftCard?.applicable_pence ?? 0) / 100))}
+                  bold
+                />
               </dl>
               <CheckoutButton />
+
+              {/* Gift card panel */}
+              <div className="mt-6 pt-6 border-t" style={{ borderColor: "var(--color-rule)" }}>
+                {giftCard ? (
+                  <div>
+                    <p className="text-[10px] tracking-[0.18em] uppercase mb-2" style={{ color: "var(--color-emerald)" }}>
+                      Gift card applied
+                    </p>
+                    <p className="font-mono text-xs mb-1" style={{ color: "var(--color-ink)" }}>{giftCard.code}</p>
+                    <p className="text-xs mb-3" style={{ color: "var(--color-muted)" }}>
+                      Balance {formatGbpPence(giftCard.balance_pence)}
+                      {giftCard.applicable_pence < giftCard.balance_pence &&
+                        ` · ${formatGbpPence(giftCard.applicable_pence)} will apply to this order (£0.30 minimum stays on Stripe)`}
+                    </p>
+                    <form action={removeGiftCard}>
+                      <button type="submit" className="text-[10px] tracking-[0.18em] uppercase lux-link" style={{ color: "var(--color-oxblood)" }}>
+                        Remove gift card
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <form action={applyAction} className="flex items-center gap-2">
+                    <input
+                      name="code"
+                      placeholder="ASOFE-XXXX-XXXX-XXXX"
+                      className="flex-1 h-10 border bg-transparent px-2 text-xs font-mono uppercase tracking-wider"
+                      style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+                    />
+                    <button
+                      type="submit"
+                      className="h-10 px-4 text-[10px] tracking-[0.22em] uppercase font-medium border"
+                      style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}
+                    >
+                      Apply
+                    </button>
+                  </form>
+                )}
+              </div>
+
               <p className="text-xs leading-relaxed mt-4" style={{ color: "var(--color-muted)" }}>
                 Each piece ships from its designer via Asofe's London fulfilment. Complimentary returns within 7 days.
               </p>

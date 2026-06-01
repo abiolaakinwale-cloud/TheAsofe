@@ -9,6 +9,7 @@ const customerCare = [
   { label: "Care Guide", href: "/care" },
   { label: "Authentication", href: "/authentication" },
   { label: "Size Guide", href: "/size-guide" },
+  { label: "Gift Cards", href: "/gift-cards" },
 ];
 
 const company = [
