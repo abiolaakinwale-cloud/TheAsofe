@@ -143,6 +143,42 @@ export async function notifyOrderDispatched(order: { id: string; customer_email:
   });
 }
 
+export async function notifyOrderCancelled(args: {
+  orderId: string;
+  customerEmail: string;
+  refundAmount: number;
+  reason?: string;
+}): Promise<void> {
+  await send({
+    to: args.customerEmail,
+    subject: `Your Asofe order has been cancelled — ${orderRef(args.orderId)}`,
+    text: [
+      `Your order ${orderRef(args.orderId)} has been cancelled at your request.`,
+      ``,
+      `Refund: ${formatPrice(args.refundAmount)} to the original payment method.`,
+      `Most banks complete refunds in 5-10 business days.`,
+      ``,
+      args.reason ? `Reason recorded: ${args.reason}` : ``,
+      `If this wasn't you, write to correspondence@theasofe.com straight away.`,
+    ].filter(Boolean).join("\n"),
+  });
+
+  await send({
+    to: ADMIN_EMAIL,
+    subject: `Order cancelled — ${orderRef(args.orderId)} · refund ${formatPrice(args.refundAmount)}`,
+    text: [
+      `A customer has cancelled their order.`,
+      ``,
+      `Order: ${orderRef(args.orderId)}`,
+      `Customer: ${args.customerEmail}`,
+      `Refund: ${formatPrice(args.refundAmount)}`,
+      args.reason ? `Reason: ${args.reason}` : ``,
+      ``,
+      `Open: ${SITE_URL}/admin/orders/${args.orderId}`,
+    ].filter(Boolean).join("\n"),
+  });
+}
+
 export async function notifyOrderDelivered(order: { id: string; customer_email: string }): Promise<void> {
   await send({
     to: order.customer_email,

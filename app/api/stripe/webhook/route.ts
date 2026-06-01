@@ -157,7 +157,12 @@ export async function POST(request: NextRequest) {
           .select("id, status, order_items(product_slug, colour, size, qty)")
           .eq("stripe_payment_intent_id", paymentIntentId)
           .maybeSingle();
-        if (!order || order.status === "refunded") break;
+        // Short-circuit when the order has already been settled by an internal
+        // path — refunded by an admin (returns flow) or cancelled by the
+        // customer. Both already performed their own granular stock
+        // restoration before triggering the Stripe refund; the webhook
+        // arriving after the fact would otherwise double-restock.
+        if (!order || order.status === "refunded" || order.status === "cancelled") break;
 
         await sb.from("orders").update({
           status: "refunded",

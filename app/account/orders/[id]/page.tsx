@@ -13,8 +13,15 @@ const TIMELINE: Array<{ key: TimelineKey; label: string }> = [
   { key: "delivered",  label: "Delivered" },
 ];
 
-export default async function CustomerOrderDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function CustomerOrderDetail({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ cancelled?: string; error?: string }>;
+}) {
   const { id } = await params;
+  const { cancelled, error } = await searchParams;
   const sb = await getServerSupabase();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/signin?next=/account/orders/${id}`);
@@ -92,6 +99,21 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
       <Link href="/account/orders" className="text-[11px] tracking-[0.18em] uppercase lux-link mb-6 inline-block" style={{ color: "var(--color-muted)" }}>
         ← Orders
       </Link>
+
+      {cancelled === "1" && (
+        <div className="mb-8 p-5 max-w-3xl" style={{ backgroundColor: "var(--color-cream)" }}>
+          <p className="eyebrow mb-2" style={{ color: "var(--color-emerald)" }}>Cancellation confirmed</p>
+          <p className="text-sm" style={{ color: "var(--color-ink)" }}>
+            Your refund is on its way back to your original payment method — typically 5–10 business days.
+          </p>
+        </div>
+      )}
+      {error && (
+        <div className="mb-8 p-5 max-w-3xl" style={{ backgroundColor: "var(--color-cream)" }}>
+          <p className="text-sm" style={{ color: "var(--color-oxblood)" }}>{decodeURIComponent(error)}</p>
+        </div>
+      )}
+
       <p className="eyebrow mb-4" style={{ color: "var(--color-oxblood)" }}>
         {formatDate(order.created_at)}
       </p>
@@ -243,6 +265,16 @@ export default async function CustomerOrderDetail({ params }: { params: Promise<
               style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}
             >
               Request a return
+            </Link>
+          )}
+
+          {order.status === "paid" && (
+            <Link
+              href={`/account/orders/${order.id}/cancel`}
+              className="block mt-4 w-full px-6 py-3 text-center text-[11px] tracking-[0.22em] uppercase font-medium border"
+              style={{ borderColor: "var(--color-oxblood)", color: "var(--color-oxblood)" }}
+            >
+              Cancel order &amp; refund
             </Link>
           )}
 
