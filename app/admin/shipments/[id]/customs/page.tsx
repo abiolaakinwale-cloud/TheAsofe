@@ -73,6 +73,13 @@ export default async function CustomsDeclarationPage({ params }: { params: Promi
         >
           Print / Save as PDF →
         </a>
+        <Link
+          href={`/admin/shipments/${id}/customs/edit`}
+          className="px-5 py-2 text-[11px] tracking-[0.22em] uppercase font-medium border"
+          style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}
+        >
+          Edit metadata →
+        </Link>
         <span className="text-xs" style={{ color: "var(--color-muted)" }}>
           Tip: Cmd/Ctrl-P → "Save as PDF" produces a clean attachment.
         </span>
