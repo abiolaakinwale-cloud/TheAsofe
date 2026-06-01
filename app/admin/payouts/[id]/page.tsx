@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { formatDate, formatPrice } from "@/lib/account";
 import { sendPayoutStatement, markPayoutPaid, cancelPayout } from "../actions";
+import AuditPanel from "@/components/admin/AuditPanel";
 
 export default async function AdminPayoutDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -162,6 +163,10 @@ export default async function AdminPayoutDetail({ params }: { params: Promise<{ 
           {p.notes && (
             <p className="mt-6 text-xs leading-relaxed" style={{ color: "var(--color-muted)" }}>{p.notes}</p>
           )}
+
+          <div className="mt-6">
+            <AuditPanel targetType="payout" targetId={p.id} />
+          </div>
         </aside>
       </section>
     </>

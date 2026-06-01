@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { formatDate, formatPrice, RETURN_STATUS_LABEL, RETURN_REASON_LABEL } from "@/lib/account";
 import { markReturnReceived, approveReturnRefund, rejectReturn } from "../actions";
+import AuditPanel from "@/components/admin/AuditPanel";
 
 export default async function AdminReturnDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -153,6 +154,10 @@ export default async function AdminReturnDetail({ params }: { params: Promise<{ 
             {r.refunded_at && <Row k="Refunded" v={formatDate(r.refunded_at)} />}
             {r.stripe_refund_id && <Row k="Stripe refund" v={r.stripe_refund_id.slice(0, 18)} />}
           </dl>
+
+          <div className="mt-6">
+            <AuditPanel targetType="return" targetId={r.id} />
+          </div>
         </aside>
       </section>
     </>

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { formatPrice } from "@/lib/data";
 import { setOrderStatus, dispatchOrder } from "../actions";
+import AuditPanel from "@/components/admin/AuditPanel";
 
 const NEXT_STATES: Record<string, { label: string; to: "paid" | "packed" | "dispatched" | "delivered" | "cancelled" }[]> = {
   paid:       [{ label: "Mark packed",     to: "packed" },     { label: "Cancel",  to: "cancelled" }],
@@ -173,6 +174,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               <p className="break-all">{order.stripe_payment_intent_id}</p>
             </div>
           )}
+
+          <AuditPanel targetType="order" targetId={order.id} />
         </aside>
       </div>
     </>
