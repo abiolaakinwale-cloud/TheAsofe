@@ -39,8 +39,9 @@ export default function PressPage() {
             <div>
               <p className="eyebrow mb-3" style={{ color: "var(--color-oxblood)" }}>Press kit</p>
               <p>
-                A high-resolution image set, founder bio, and platform fact sheet are available on request. Write to us
-                and we will share a download link.
+                Brand photography, boilerplate copy, quick facts, and the press contact are all on the{" "}
+                <a href="/press/kit" className="lux-link" style={{ color: "var(--color-ink)" }}>downloadable press kit</a>.
+                For specific designer imagery or higher-resolution files, write to us directly.
               </p>
             </div>
           </div>
