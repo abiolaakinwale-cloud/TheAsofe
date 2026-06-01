@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { formatPrice } from "@/lib/data";
-import { setOrderStatus, dispatchOrder } from "../actions";
+import { setOrderStatus, dispatchOrder, buyShippingLabel } from "../actions";
 import AuditPanel from "@/components/admin/AuditPanel";
+import { isCourierStub } from "@/lib/courier";
 
 const NEXT_STATES: Record<string, { label: string; to: "paid" | "packed" | "dispatched" | "delivered" | "cancelled" }[]> = {
   paid:       [{ label: "Mark packed",     to: "packed" },     { label: "Cancel",  to: "cancelled" }],
@@ -174,6 +175,63 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               <p className="break-all">{order.stripe_payment_intent_id}</p>
             </div>
           )}
+
+          {/* Shipping label */}
+          <div className="p-6" style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)" }}>
+            <p className="eyebrow mb-3" style={{ color: "var(--color-cobalt)" }}>Shipping label</p>
+            {order.label_url ? (
+              <>
+                <p className="text-xs mb-2" style={{ color: "var(--color-muted)" }}>
+                  {order.label_provider === "stub" ? "Stub provider — not a real label" : "Issued"}
+                </p>
+                <p className="text-xs mb-2" style={{ color: "var(--color-ink)" }}>
+                  {order.courier ?? "—"}
+                </p>
+                <p className="text-xs font-mono mb-3 break-all" style={{ color: "var(--color-ink)" }}>
+                  {order.tracking_ref ?? "—"}
+                </p>
+                {typeof order.label_cost_pence === "number" && (
+                  <p className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: "var(--color-muted)" }}>
+                    Cost £{(order.label_cost_pence / 100).toFixed(2)}
+                  </p>
+                )}
+                <a
+                  href={order.label_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block w-full py-2 text-center text-[11px] tracking-[0.22em] uppercase font-medium border"
+                  style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}
+                >
+                  Download PDF →
+                </a>
+              </>
+            ) : (
+              <>
+                <p className="text-xs mb-4" style={{ color: "var(--color-muted)" }}>
+                  Generate a courier label for this shipment. {isCourierStub() && (
+                    <span style={{ color: "var(--color-oxblood)" }}>
+                      Stub mode — no real label issued until SHIPPO_API_TOKEN is set.
+                    </span>
+                  )}
+                </p>
+                {(order.status === "paid" || order.status === "packed") && order.shipping_address_id ? (
+                  <form action={buyShippingLabel.bind(null, order.id)}>
+                    <button
+                      type="submit"
+                      className="w-full py-3 text-[11px] tracking-[0.22em] uppercase font-medium"
+                      style={{ backgroundColor: "var(--color-cobalt)", color: "var(--color-ground)" }}
+                    >
+                      Buy label (Tracked 48)
+                    </button>
+                  </form>
+                ) : (
+                  <p className="text-xs" style={{ color: "var(--color-muted)" }}>
+                    {!order.shipping_address_id ? "No shipping address." : "Order must be paid or packed."}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
 
           <AuditPanel targetType="order" targetId={order.id} />
         </aside>

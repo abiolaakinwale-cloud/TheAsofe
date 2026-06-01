@@ -242,7 +242,15 @@ alter table public.orders
   add column if not exists eta_date        date,
   -- Post-delivery review-prompt cron; set when notifyReviewPrompt fires so
   -- the daily job is idempotent.
-  add column if not exists review_prompt_sent_at timestamptz;
+  add column if not exists review_prompt_sent_at timestamptz,
+  -- Outbound courier label: populated by lib/courier when the admin buys a
+  -- shipping label. provider="shippo"/"stub" + parcel_id let the tracking
+  -- webhook correlate incoming events back to the order.
+  add column if not exists label_url            text,
+  add column if not exists label_provider       text,
+  add column if not exists label_parcel_id      text,
+  add column if not exists label_cost_pence     int,
+  add column if not exists label_created_at     timestamptz;
 
 create table if not exists public.order_items (
   id           uuid primary key default gen_random_uuid(),
