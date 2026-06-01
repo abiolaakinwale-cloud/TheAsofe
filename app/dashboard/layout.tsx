@@ -28,6 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/dashboard/shipments" className="lux-link">Shipments</Link>
             <Link href="/dashboard/payouts" className="lux-link">Payouts</Link>
             <Link href="/dashboard/analytics" className="lux-link">Analytics</Link>
+            <Link href="/dashboard/wishlists" className="lux-link">Wishlists</Link>
             {profile?.role === "admin" && (
               <Link href="/admin" className="lux-link" style={{ color: "var(--color-oxblood)" }}>Admin</Link>
             )}
