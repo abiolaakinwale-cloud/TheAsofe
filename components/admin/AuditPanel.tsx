@@ -29,7 +29,7 @@ export default async function AuditPanel({
   targetId,
   limit = 10,
 }: {
-  targetType: "order" | "return" | "payout" | "brand" | "shipment";
+  targetType: "order" | "return" | "payout" | "brand" | "shipment" | "gift_card" | "question" | "review" | "product";
   targetId: string;
   limit?: number;
 }) {
