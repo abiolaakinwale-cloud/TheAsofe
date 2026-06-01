@@ -239,7 +239,10 @@ alter table public.orders
   add column if not exists courier         text,
   add column if not exists tracking_ref    text,
   add column if not exists tracking_url    text,
-  add column if not exists eta_date        date;
+  add column if not exists eta_date        date,
+  -- Post-delivery review-prompt cron; set when notifyReviewPrompt fires so
+  -- the daily job is idempotent.
+  add column if not exists review_prompt_sent_at timestamptz;
 
 create table if not exists public.order_items (
   id           uuid primary key default gen_random_uuid(),

@@ -287,6 +287,39 @@ export async function notifyReturnRejected(r: ReturnSummary & { rejectionReason:
   });
 }
 
+// ─── Review prompt (post-delivery cron) ────────────────────────────────────
+
+export async function notifyReviewPrompt(args: {
+  customerEmail: string;
+  orderId: string;
+  items: { name: string; productSlug: string }[];
+}): Promise<void> {
+  if (args.items.length === 0) return;
+  const itemLines = args.items
+    .map(i => `  · ${i.name}\n    ${SITE_URL}/account/orders/${args.orderId}/review?product=${i.productSlug}`)
+    .join("\n\n");
+
+  await send({
+    to: args.customerEmail,
+    subject: `How was your Asofe order? — ${orderRef(args.orderId)}`,
+    text: [
+      `We hope your pieces from order ${orderRef(args.orderId)} have settled in.`,
+      ``,
+      `If you have a moment, a few words from you helps the next customer trust the designer — and helps the designer hear directly from the people wearing their work.`,
+      ``,
+      `Review your pieces:`,
+      ``,
+      itemLines,
+      ``,
+      `Or open the order: ${SITE_URL}/account/orders/${args.orderId}`,
+      ``,
+      `Reviews are public on the designer's piece and atelier pages. They're verified — only buyers can leave them.`,
+      ``,
+      `If something wasn't right, write to correspondence@theasofe.com instead and we'll make it right.`,
+    ].join("\n"),
+  });
+}
+
 // ─── Payouts ───────────────────────────────────────────────────────────────
 
 export async function notifyPayoutStatement(args: {
