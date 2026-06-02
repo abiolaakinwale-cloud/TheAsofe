@@ -11,6 +11,7 @@ import { getSiteSettings, getPublishedJournalPosts } from "@/lib/cms";
 import { getWishlistSlugs } from "@/lib/wishlist";
 import ProductCard from "@/components/ProductCard";
 import Reveal, { Stagger, StaggerItem } from "./sellers/_components/Reveal";
+import RecentlyViewed from "@/components/RecentlyViewed";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -75,6 +76,7 @@ export default async function HomePage() {
       <ShopWithConfidence />
       <LovedByCommunity />
       <FromTheJournal posts={journalPosts.slice(0, 3)} />
+      <RecentlyViewed />
       <GlobalHomeCta />
     </>
   );

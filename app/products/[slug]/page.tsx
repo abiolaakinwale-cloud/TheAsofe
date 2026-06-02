@@ -21,6 +21,7 @@ import AddToBag from "./_components/AddToBag";
 import { askDesigner } from "./_components/actions";
 import ProductCard from "@/components/ProductCard";
 import Stars from "@/components/Stars";
+import RecentlyViewed from "@/components/RecentlyViewed";
 
 export async function generateStaticParams() {
   const products = await getProducts();
@@ -441,6 +442,8 @@ export default async function ProductPage({
           </div>
         </section>
       )}
+
+      <RecentlyViewed excludeSlug={slug} />
     </>
   );
 }

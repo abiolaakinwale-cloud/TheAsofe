@@ -54,6 +54,22 @@ export async function proxy(request: NextRequest) {
     });
   }
 
+  // Recently-viewed tracking: when a visitor hits /products/{slug}, prepend
+  // the slug to the `recently_viewed` cookie (newest first, deduped, capped
+  // to 12 slugs). Slug-safe regex prevents anything weird sneaking in.
+  const productMatch = path.match(/^\/products\/([a-z0-9][a-z0-9-]+)$/);
+  if (productMatch) {
+    const slug = productMatch[1];
+    const existing = request.cookies.get("recently_viewed")?.value?.split(",").filter(Boolean) ?? [];
+    const deduped = [slug, ...existing.filter(s => s !== slug)].slice(0, 12);
+    response.cookies.set("recently_viewed", deduped.join(","), {
+      httpOnly: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+
   return response;
 }
 

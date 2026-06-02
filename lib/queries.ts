@@ -45,7 +45,7 @@ type CategoryRow = {
   hero_image: string;
 };
 
-const toProduct = (r: ProductRow): Product => ({
+export const toProduct = (r: ProductRow): Product => ({
   slug: r.slug,
   name: r.name,
   brand: r.brand,
