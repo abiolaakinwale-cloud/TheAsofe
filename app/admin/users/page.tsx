@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { updateProfile } from "./actions";
 
@@ -24,7 +25,7 @@ export default async function AdminUsersPage() {
           {profiles!.map(p => (
             <li key={p.id} className="p-6 lg:p-8 grid lg:grid-cols-12 items-center gap-6" style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)" }}>
               <div className="lg:col-span-5">
-                <p className="serif text-lg" style={{ color: "var(--color-ink)" }}>{p.email}</p>
+                <Link href={`/admin/users/${p.id}`} className="serif text-lg lux-link" style={{ color: "var(--color-ink)" }}>{p.email}</Link>
                 <p className="text-xs mt-1" style={{ color: "var(--color-muted)" }}>{new Date(p.created_at).toLocaleString()}</p>
               </div>
               <form action={updateProfile.bind(null, p.id)} className="lg:col-span-7 grid grid-cols-12 items-end gap-3">
