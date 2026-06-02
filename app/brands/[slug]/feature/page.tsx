@@ -5,7 +5,10 @@ import type { Metadata } from "next";
 import { getBrand, getBrands, getProductsByBrand } from "@/lib/queries";
 import { getSiteSettings } from "@/lib/cms";
 import { getWishlistSlugs } from "@/lib/wishlist";
+import { getBrandAggregate } from "@/lib/reviews";
+import { SITE_URL, SITE_NAME, absoluteUrl } from "@/lib/site";
 import ProductCard from "@/components/ProductCard";
+import Stars from "@/components/Stars";
 
 export async function generateStaticParams() {
   const brands = await getBrands();
@@ -20,9 +23,27 @@ export async function generateMetadata({
   const { slug } = await params;
   const b = await getBrand(slug);
   if (!b) return {};
+  const url = `${SITE_URL}/brands/${b.slug}/feature`;
+  const image = b.heroImage ? absoluteUrl(b.heroImage) : undefined;
+  const title = `${b.name} · Spotlight`;
   return {
-    title: `${b.name} · Spotlight`,
+    title,
     description: b.tagline,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "article",
+      title: `${b.name} — House Spotlight`,
+      description: b.tagline,
+      url,
+      siteName: SITE_NAME,
+      images: image ? [{ url: image, alt: b.name }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${b.name} — House Spotlight`,
+      description: b.tagline,
+      images: image ? [image] : undefined,
+    },
   };
 }
 
@@ -32,13 +53,42 @@ export default async function DesignerFeaturePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [brand, products, settings, wishlistSlugs] = await Promise.all([
+  const [brand, products, settings, wishlistSlugs, brandRating, allBrands] = await Promise.all([
     getBrand(slug),
     getProductsByBrand(slug),
     getSiteSettings(),
     getWishlistSlugs(),
+    getBrandAggregate(slug),
+    getBrands(),
   ]);
   if (!brand) notFound();
+
+  // Pick 3 other brands for the footer "continue reading" set
+  const otherBrands = allBrands
+    .filter(b => b.slug !== slug)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
+
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: `${brand.name} — House Spotlight`,
+    description: brand.tagline,
+    image: [absoluteUrl(brand.heroImage)],
+    author: { "@type": "Organization", name: SITE_NAME },
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/asofe/hero-main.png` },
+    },
+    about: {
+      "@type": "Brand",
+      name: brand.name,
+      ...(brand.origin && { foundingLocation: { "@type": "Place", name: brand.origin } }),
+      ...(brand.founded && brand.founded !== "—" && { foundingDate: String(brand.founded) }),
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": `${SITE_URL}/brands/${brand.slug}/feature` },
+  };
 
   const isCurrentSpotlight = settings.spotlight.enabled && settings.spotlight.brandSlug === slug;
   // Use the CMS editorial image when this brand is the active spotlight,
@@ -54,6 +104,21 @@ export default async function DesignerFeaturePage({
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+
+      {/* ─── Breadcrumb bar ────────────────────────────────────────── */}
+      <nav className="border-b" style={{ backgroundColor: "var(--color-ink)", color: "rgba(255,255,255,0.55)", borderColor: "rgba(255,255,255,0.1)" }}>
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-3 flex items-center gap-3 text-[10px] tracking-[0.22em] uppercase">
+          <Link href="/" className="lux-link" style={{ color: "rgba(255,255,255,0.55)" }}>Home</Link>
+          <span aria-hidden>·</span>
+          <Link href="/brands" className="lux-link" style={{ color: "rgba(255,255,255,0.55)" }}>Designers</Link>
+          <span aria-hidden>·</span>
+          <Link href={`/brands/${brand.slug}`} className="lux-link" style={{ color: "rgba(255,255,255,0.55)" }}>{brand.name}</Link>
+          <span aria-hidden>·</span>
+          <span style={{ color: "var(--color-saffron-soft)" }}>Spotlight</span>
+        </div>
+      </nav>
+
       {/* ─── Cinematic hero ────────────────────────────────────────── */}
       <section className="relative overflow-hidden" style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}>
         <div className="relative w-full aspect-[16/9] lg:aspect-[21/9] max-h-[80vh] overflow-hidden">
@@ -79,6 +144,14 @@ export default async function DesignerFeaturePage({
             <p className="serif italic text-xl lg:text-2xl mt-6 max-w-2xl" style={{ color: "rgba(255,255,255,0.78)" }}>
               {brand.tagline}
             </p>
+            {brandRating.count > 0 && (
+              <div className="mt-6 inline-flex items-center gap-3 px-4 py-2 backdrop-blur" style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "var(--color-ground)" }}>
+                <Stars value={brandRating.average} size="sm" />
+                <span className="text-xs tabular-nums" style={{ color: "rgba(255,255,255,0.85)" }}>
+                  {brandRating.average.toFixed(1)} · {brandRating.count} verified {brandRating.count === 1 ? "review" : "reviews"}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -169,18 +242,53 @@ export default async function DesignerFeaturePage({
         </section>
       )}
 
-      {/* ─── Footer CTA ──────────────────────────────────────────── */}
+      {/* ─── Continue reading: 3 other houses ────────────────────── */}
       <section style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}>
-        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-24 lg:py-32 text-center">
-          <p className="eyebrow mb-6" style={{ color: "var(--color-saffron-soft)" }}>Continue reading</p>
-          <h2 className="display text-[clamp(2rem,4vw,3.6rem)] max-w-[24ch] mx-auto mb-10">
-            The other houses on our floor.
-          </h2>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link href="/brands" className="inline-block px-8 py-4 text-[12px] tracking-[0.22em] uppercase font-medium" style={{ backgroundColor: "var(--color-ground)", color: "var(--color-ink)" }}>
+        <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-24 lg:py-32">
+          <div className="flex items-end justify-between flex-wrap gap-6 mb-12 lg:mb-16">
+            <div>
+              <p className="eyebrow mb-3" style={{ color: "var(--color-saffron-soft)" }}>Continue reading</p>
+              <h2 className="display text-[clamp(2rem,4vw,3.6rem)] max-w-[20ch]">
+                The other houses on our floor.
+              </h2>
+            </div>
+            <Link href="/brands" className="text-[12px] tracking-[0.22em] uppercase font-medium pb-1 border-b" style={{ borderColor: "var(--color-saffron-soft)", color: "var(--color-saffron-soft)" }}>
               All designers →
             </Link>
-            <Link href={`/brands/${brand.slug}`} className="inline-flex items-center gap-3 text-[12px] tracking-[0.22em] uppercase font-medium pb-1 border-b" style={{ borderColor: "var(--color-saffron-soft)", color: "var(--color-saffron-soft)" }}>
+          </div>
+
+          {otherBrands.length > 0 && (
+            <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
+              {otherBrands.map(b => (
+                <li key={b.slug}>
+                  <Link href={`/brands/${b.slug}/feature`} className="block group">
+                    <div className="relative aspect-[4/5] mb-5 overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+                      <Image
+                        src={b.heroImage}
+                        alt={b.name}
+                        fill
+                        sizes="(max-width: 1024px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    </div>
+                    <p className="text-[10px] tracking-[0.22em] uppercase mb-2" style={{ color: "rgba(255,255,255,0.55)" }}>
+                      {b.origin}
+                    </p>
+                    <p className="display text-2xl lg:text-3xl mb-3" style={{ color: "var(--color-ground)" }}>{b.name}.</p>
+                    <p className="serif italic text-base leading-relaxed line-clamp-2 mb-4" style={{ color: "rgba(255,255,255,0.7)" }}>
+                      {b.tagline}
+                    </p>
+                    <span className="text-[10px] tracking-[0.22em] uppercase lux-link" style={{ color: "var(--color-saffron-soft)" }}>
+                      Read the spotlight →
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="mt-16 pt-12 border-t text-center" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+            <Link href={`/brands/${brand.slug}`} className="inline-block px-8 py-4 text-[12px] tracking-[0.22em] uppercase font-medium" style={{ backgroundColor: "var(--color-ground)", color: "var(--color-ink)" }}>
               Shop {brand.name} →
             </Link>
           </div>
