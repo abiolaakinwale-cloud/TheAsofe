@@ -287,6 +287,14 @@ export default async function CustomerOrderDetail({
             </div>
           )}
 
+          <Link
+            href={`/account/orders/${order.id}/receipt`}
+            className="block mt-6 text-[11px] tracking-[0.18em] uppercase lux-link"
+            style={{ color: "var(--color-muted)" }}
+          >
+            Printable receipt →
+          </Link>
+
           <p className="mt-10 text-xs leading-relaxed" style={{ color: "var(--color-muted)" }}>
             For questions about this order, write to{" "}
             <a className="lux-link" href="mailto:correspondence@theasofe.com">correspondence@theasofe.com</a>{" "}
