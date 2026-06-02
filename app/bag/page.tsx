@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getEnrichedBag } from "@/lib/bag";
 import { formatPrice } from "@/lib/data";
-import { removeFromBag, updateBagQty } from "./actions";
+import { removeFromBag, updateBagQty, saveForLater } from "./actions";
 import { applyGiftCard, removeGiftCard, readAppliedGiftCard } from "./gift-card-actions";
 import { formatGbpPence } from "@/lib/gift-cards";
 import CheckoutButton from "./CheckoutButton";
@@ -15,7 +15,12 @@ async function applyAction(formData: FormData) {
   await applyGiftCard(formData);
 }
 
-export default async function BagPage() {
+export default async function BagPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ saved?: string }>;
+}) {
+  const { saved } = await searchParams;
   const bag = await getEnrichedBag();
   const giftCard = await readAppliedGiftCard();
 
@@ -26,7 +31,9 @@ export default async function BagPage() {
           <p className="eyebrow mb-6" style={{ color: "var(--color-oxblood)" }}>The bag</p>
           <h1 className="display text-4xl lg:text-5xl mb-6" style={{ color: "var(--color-ink)" }}>An empty bag.</h1>
           <p className="text-base leading-relaxed mb-10" style={{ color: "var(--color-ink-soft)" }}>
-            Nothing in your bag yet. Wander the designers.
+            {saved
+              ? <>Saved for later — find it on <Link href="/account/wishlist" className="lux-link" style={{ color: "var(--color-ink)" }}>your wishlist</Link>.</>
+              : "Nothing in your bag yet. Wander the designers."}
           </p>
           <Link href="/brands" className="inline-block px-8 py-4 text-[12px] tracking-[0.22em] uppercase font-medium" style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}>
             Browse the designers
@@ -45,6 +52,16 @@ export default async function BagPage() {
             {bag.count} {bag.count === 1 ? "piece" : "pieces"}.
           </h1>
         </div>
+
+        {saved && (
+          <div className="mb-8 p-4 max-w-3xl text-sm flex items-center justify-between gap-4 flex-wrap" style={{ backgroundColor: "var(--color-cream)", color: "var(--color-ink)" }}>
+            <span>
+              <span style={{ color: "var(--color-emerald)" }}>✦</span>{" "}
+              Saved to your wishlist. Find it on{" "}
+              <Link href="/account/wishlist" className="lux-link" style={{ color: "var(--color-ink)" }}>your wishlist page</Link>.
+            </span>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16">
           <ul className="lg:col-span-8 space-y-px">
@@ -109,10 +126,15 @@ export default async function BagPage() {
                   />
                 </div>
 
-                <div className="col-span-4 lg:col-span-2 text-right self-center mt-4 lg:mt-0">
-                  <p className="tabular-nums mb-3 text-base" style={{ color: "var(--color-ink)" }}>{formatPrice(it.lineSubtotal)}</p>
+                <div className="col-span-4 lg:col-span-2 text-right self-center mt-4 lg:mt-0 flex flex-col items-end gap-2">
+                  <p className="tabular-nums text-base" style={{ color: "var(--color-ink)" }}>{formatPrice(it.lineSubtotal)}</p>
+                  <form action={saveForLater.bind(null, it.slug, it.colour, it.size)}>
+                    <button type="submit" className="text-[11px] tracking-[0.18em] uppercase lux-link py-1" style={{ color: "var(--color-cobalt)" }}>
+                      Save for later
+                    </button>
+                  </form>
                   <form action={removeFromBag.bind(null, it.slug, it.colour, it.size)}>
-                    <button type="submit" className="text-[11px] tracking-[0.18em] uppercase lux-link py-2 -my-2" style={{ color: "var(--color-muted)" }}>
+                    <button type="submit" className="text-[11px] tracking-[0.18em] uppercase lux-link py-1" style={{ color: "var(--color-muted)" }}>
                       Remove
                     </button>
                   </form>

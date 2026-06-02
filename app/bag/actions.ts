@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { BAG_LIMITS, readBag, writeBag, type BagItem } from "@/lib/bag";
 import { getAnonSupabase } from "@/lib/supabase/anon";
+import { getServerSupabase } from "@/lib/supabase/server";
 
 // Look up stock for a specific (slug, colour, size). Falls back to '' for
 // products created before variants (their row has colour='' in stock_levels).
@@ -83,4 +84,29 @@ export async function removeFromBag(slug: string, colour: string, size: string) 
 export async function clearBag() {
   await writeBag([]);
   revalidatePath("/", "layout");
+}
+
+/**
+ * Move a bag line to the customer's wishlist. Requires sign-in (wishlist is
+ * per-user). If unauthenticated, redirects to sign-in with a `next` back to
+ * the bag. If already wishlisted, the insert is a no-op (PK conflict).
+ */
+export async function saveForLater(slug: string, colour: string, size: string) {
+  const sb = await getServerSupabase();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) redirect("/signin?next=/bag");
+
+  // Add to wishlist (ignore conflict — already saved is fine)
+  await sb.from("wishlist").upsert(
+    { user_id: user.id, product_slug: slug },
+    { onConflict: "user_id,product_slug", ignoreDuplicates: true }
+  );
+
+  // Remove the line from the bag cookie
+  const items = await readBag();
+  await writeBag(items.filter(i => !sameLine(i, slug, colour, size)));
+
+  revalidatePath("/", "layout");
+  revalidatePath("/account/wishlist");
+  redirect(`/bag?saved=${encodeURIComponent(slug)}`);
 }
