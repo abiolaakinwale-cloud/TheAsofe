@@ -1101,3 +1101,55 @@ create policy "customer manages own wishlist share" on public.wishlist_shares
 
 create policy "admin reads all wishlist shares" on public.wishlist_shares
   for select using (public.is_admin());
+
+-- ─── Referrals ───────────────────────────────────────────────────────────────
+-- Each profile gets a personal referral_code on first /account/referrals
+-- visit (lazy generation in app code). Visitors who land via /?ref=CODE
+-- have the code set in a cookie; on first paid order the webhook creates
+-- a referrals row, issues a £25 store-credit gift card to the referrer,
+-- and a separate £25 thank-you card to the referee.
+alter table public.profiles
+  add column if not exists referral_code text unique;
+
+create table if not exists public.referrals (
+  id                       uuid primary key default gen_random_uuid(),
+  referrer_user_id         uuid not null references auth.users(id) on delete cascade,
+  referee_user_id          uuid references auth.users(id) on delete set null,
+  referee_email            text,
+  code                     text not null,                  -- snapshot of referrer's code at use time
+  status                   text not null default 'pending'
+                             check (status in ('pending','rewarded','cancelled')),
+  attributed_order_id      uuid references public.orders(id) on delete set null,
+  reward_amount_pence      int  not null default 2500,
+  referrer_gift_card_id    uuid references public.gift_cards(id) on delete set null,
+  referee_gift_card_id     uuid references public.gift_cards(id) on delete set null,
+  created_at               timestamptz not null default now(),
+  rewarded_at              timestamptz
+);
+
+create index if not exists referrals_referrer_idx on public.referrals(referrer_user_id);
+create index if not exists referrals_referee_idx  on public.referrals(referee_user_id);
+create index if not exists referrals_status_idx   on public.referrals(status);
+
+-- Snapshot which referral code drove this order, settled at checkout time.
+alter table public.orders
+  add column if not exists referral_code text;
+
+alter table public.referrals enable row level security;
+
+drop policy if exists "referrer reads own referrals" on public.referrals;
+drop policy if exists "referee reads own as referee" on public.referrals;
+drop policy if exists "admin reads all referrals"    on public.referrals;
+drop policy if exists "admin writes referrals"       on public.referrals;
+
+create policy "referrer reads own referrals" on public.referrals
+  for select using (referrer_user_id = auth.uid());
+
+create policy "referee reads own as referee" on public.referrals
+  for select using (referee_user_id = auth.uid());
+
+create policy "admin reads all referrals" on public.referrals
+  for select using (public.is_admin());
+
+create policy "admin writes referrals" on public.referrals
+  for all using (public.is_admin()) with check (public.is_admin());

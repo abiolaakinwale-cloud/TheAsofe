@@ -29,6 +29,13 @@ export async function startCheckout(): Promise<CheckoutError | void> {
   const giftCard = await readAppliedGiftCard();
   const giftDiscountPounds = giftCard ? Math.floor(giftCard.applicable_pence / 100) : 0;
 
+  // Pick up the referral cookie (set by proxy.ts on /?ref=CODE landings).
+  // We don't validate the code here — finalisation in the webhook checks
+  // the code exists and the referee isn't the referrer themselves.
+  const { cookies } = await import("next/headers");
+  const cookieJar = await cookies();
+  const referralCode = cookieJar.get("ref")?.value?.toUpperCase() ?? null;
+
   // 1. Create an order row in 'pending'. Items snapshot price/name/brand so a
   //    later product edit doesn't change historical orders.
   const { data: order, error: orderErr } = await sb
@@ -43,6 +50,7 @@ export async function startCheckout(): Promise<CheckoutError | void> {
       status: "pending",
       gift_card_code: giftCard?.code ?? null,
       gift_card_discount: giftDiscountPounds,
+      referral_code: referralCode,
     })
     .select("id")
     .single();

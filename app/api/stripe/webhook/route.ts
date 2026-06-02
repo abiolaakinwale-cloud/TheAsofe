@@ -230,6 +230,99 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // 7. Referral attribution: if order.referral_code is set AND this is
+        //    the customer's first paid order AND the code belongs to someone
+        //    else, issue a £25 store-credit gift card to both parties + log
+        //    a referrals row. Self-referral and repeat-customer flows are
+        //    silently ignored.
+        if (order.referral_code && order.customer_id) {
+          const { data: referrer } = await sb
+            .from("profiles")
+            .select("id, email")
+            .eq("referral_code", order.referral_code)
+            .maybeSingle();
+
+          // Has this customer paid before? (excluding the current order)
+          const { count: priorPaid } = await sb
+            .from("orders")
+            .select("id", { count: "exact", head: true })
+            .eq("customer_id", order.customer_id)
+            .in("status", ["paid","packed","dispatched","delivered","refunded","cancelled"])
+            .neq("id", order.id);
+
+          if (
+            referrer &&
+            referrer.id !== order.customer_id &&
+            (priorPaid ?? 0) === 0
+          ) {
+            const { generateGiftCardCode } = await import("@/lib/gift-cards");
+            const { REFERRAL_REWARD_PENCE } = await import("@/lib/referrals");
+            const { notifyGiftCardIssued } = await import("@/lib/notifications");
+
+            const expiresAt = new Date(Date.now() + 365 * 86_400_000).toISOString().slice(0, 10);
+
+            // Issue gift card to the referrer
+            const { data: rCard } = await sb.from("gift_cards").insert({
+              code: generateGiftCardCode(),
+              initial_value_pence: REFERRAL_REWARD_PENCE,
+              balance_pence: REFERRAL_REWARD_PENCE,
+              currency: "GBP",
+              recipient_email: referrer.email,
+              purchaser_user_id: order.customer_id,
+              personal_message: `Thank you for introducing a new customer to Asofe.`,
+              delivered_at: new Date().toISOString(),
+              expires_at: expiresAt,
+            }).select("id").single();
+
+            // Issue gift card to the referee (the new customer)
+            const refereeEmail = session.customer_details?.email ?? order.customer_email;
+            const { data: eCard } = await sb.from("gift_cards").insert({
+              code: generateGiftCardCode(),
+              initial_value_pence: REFERRAL_REWARD_PENCE,
+              balance_pence: REFERRAL_REWARD_PENCE,
+              currency: "GBP",
+              recipient_email: refereeEmail,
+              purchaser_user_id: referrer.id,
+              personal_message: `Welcome to Asofe — a thank-you for being introduced.`,
+              delivered_at: new Date().toISOString(),
+              expires_at: expiresAt,
+            }).select("id").single();
+
+            await sb.from("referrals").insert({
+              referrer_user_id: referrer.id,
+              referee_user_id: order.customer_id,
+              referee_email: refereeEmail,
+              code: order.referral_code,
+              status: "rewarded",
+              attributed_order_id: order.id,
+              reward_amount_pence: REFERRAL_REWARD_PENCE,
+              referrer_gift_card_id: rCard?.id ?? null,
+              referee_gift_card_id: eCard?.id ?? null,
+              rewarded_at: new Date().toISOString(),
+            });
+
+            // Notify both parties of their new store credit
+            if (referrer.email && rCard) {
+              await notifyGiftCardIssued({
+                toEmail: referrer.email,
+                code: (await sb.from("gift_cards").select("code").eq("id", rCard.id).single()).data?.code ?? "",
+                amountPence: REFERRAL_REWARD_PENCE,
+                message: `Thank you for introducing a new customer.`,
+                expiresAt,
+              });
+            }
+            if (refereeEmail && eCard) {
+              await notifyGiftCardIssued({
+                toEmail: refereeEmail,
+                code: (await sb.from("gift_cards").select("code").eq("id", eCard.id).single()).data?.code ?? "",
+                amountPence: REFERRAL_REWARD_PENCE,
+                message: `Welcome to Asofe — a thank-you for being introduced.`,
+                expiresAt,
+              });
+            }
+          }
+        }
+
         break;
       }
 

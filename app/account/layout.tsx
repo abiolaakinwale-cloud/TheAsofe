@@ -18,6 +18,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
             <Link href="/account/orders" className="lux-link">Orders</Link>
             <Link href="/account/returns" className="lux-link">Returns</Link>
             <Link href="/account/wishlist" className="lux-link">Wishlist</Link>
+            <Link href="/account/referrals" className="lux-link">Referrals</Link>
             <Link href="/account/addresses" className="lux-link">Addresses</Link>
           </div>
           <form action={signOut}>

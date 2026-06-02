@@ -40,6 +40,20 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // Referral attribution: visitors landing with ?ref=CODE get the code
+  // stored in a cookie for 30 days. Read at checkout time so the order
+  // knows who to attribute the referral to. Invalid codes are filtered at
+  // finalisation; we don't validate here to keep the proxy fast.
+  const refParam = request.nextUrl.searchParams.get("ref");
+  if (refParam && /^[A-Z0-9]{4,20}$/i.test(refParam)) {
+    response.cookies.set("ref", refParam.toUpperCase(), {
+      httpOnly: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+
   return response;
 }
 
