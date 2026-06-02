@@ -22,9 +22,9 @@ const company = [
 ];
 
 const socials = [
-  { label: "Instagram", href: "https://instagram.com/theasofe" },
-  { label: "TikTok",    href: "https://tiktok.com/@theasofe" },
-  { label: "Pinterest", href: "https://pinterest.com/theasofe" },
+  { label: "Instagram", href: "https://instagram.com/asofefashion" },
+  { label: "TikTok",    href: "https://tiktok.com/@asofefashion" },
+  { label: "Pinterest", href: "https://pinterest.com/asofefashion" },
 ];
 
 const legal = [
