@@ -413,6 +413,29 @@ export async function notifyPayoutPaid(args: {
   });
 }
 
+// ─── Concierge chat ────────────────────────────────────────────────────────
+
+export async function notifyConciergeThreadOpened(args: {
+  customerEmail: string;
+  firstMessage: string;
+  threadId: string;
+}): Promise<void> {
+  await send({
+    to: ADMIN_EMAIL,
+    subject: `New concierge thread · ${args.customerEmail}`,
+    text: [
+      `A customer has opened a concierge thread.`,
+      ``,
+      `Customer: ${args.customerEmail}`,
+      ``,
+      `First message:`,
+      `${args.firstMessage}`,
+      ``,
+      `Reply: ${SITE_URL}/admin/concierge/${args.threadId}`,
+    ].join("\n"),
+  });
+}
+
 // ─── Gift cards ────────────────────────────────────────────────────────────
 
 export async function notifyGiftCardIssued(args: {

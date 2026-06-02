@@ -1153,3 +1153,73 @@ create policy "admin reads all referrals" on public.referrals
 
 create policy "admin writes referrals" on public.referrals
   for all using (public.is_admin()) with check (public.is_admin());
+
+-- ─── Concierge chat ──────────────────────────────────────────────────────────
+-- One thread per customer (lazy-created on first message). Messages stream
+-- to both sides over Supabase realtime via the supabase_realtime publication.
+create table if not exists public.concierge_threads (
+  id            uuid primary key default gen_random_uuid(),
+  customer_id   uuid not null unique references auth.users(id) on delete cascade,
+  status        text not null default 'open' check (status in ('open','closed')),
+  last_message_at timestamptz,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists concierge_threads_status_idx on public.concierge_threads(status, last_message_at desc);
+
+create table if not exists public.concierge_messages (
+  id          uuid primary key default gen_random_uuid(),
+  thread_id   uuid not null references public.concierge_threads(id) on delete cascade,
+  sender_role text not null check (sender_role in ('customer','admin','system')),
+  sender_id   uuid references auth.users(id) on delete set null,
+  body        text not null check (length(body) between 1 and 4000),
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists concierge_messages_thread_idx on public.concierge_messages(thread_id, created_at desc);
+
+alter table public.concierge_threads  enable row level security;
+alter table public.concierge_messages enable row level security;
+
+drop policy if exists "customer reads own thread"      on public.concierge_threads;
+drop policy if exists "customer inserts own thread"    on public.concierge_threads;
+drop policy if exists "admin reads all threads"        on public.concierge_threads;
+drop policy if exists "admin writes threads"           on public.concierge_threads;
+drop policy if exists "customer reads own messages"    on public.concierge_messages;
+drop policy if exists "customer inserts own messages"  on public.concierge_messages;
+drop policy if exists "admin reads all messages"       on public.concierge_messages;
+drop policy if exists "admin writes messages"          on public.concierge_messages;
+
+create policy "customer reads own thread" on public.concierge_threads
+  for select using (customer_id = auth.uid());
+create policy "customer inserts own thread" on public.concierge_threads
+  for insert with check (customer_id = auth.uid());
+create policy "admin reads all threads" on public.concierge_threads
+  for select using (public.is_admin());
+create policy "admin writes threads" on public.concierge_threads
+  for all using (public.is_admin()) with check (public.is_admin());
+
+create policy "customer reads own messages" on public.concierge_messages
+  for select using (exists (select 1 from public.concierge_threads t where t.id = thread_id and t.customer_id = auth.uid()));
+create policy "customer inserts own messages" on public.concierge_messages
+  for insert with check (
+    sender_role = 'customer' AND
+    exists (select 1 from public.concierge_threads t where t.id = thread_id and t.customer_id = auth.uid())
+  );
+create policy "admin reads all messages" on public.concierge_messages
+  for select using (public.is_admin());
+create policy "admin writes messages" on public.concierge_messages
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Add concierge_messages to the realtime publication so postgres_changes
+-- subscriptions deliver INSERTs to clients. Idempotent: skip if already added.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'concierge_messages'
+  ) then
+    alter publication supabase_realtime add table public.concierge_messages;
+  end if;
+end $$;
