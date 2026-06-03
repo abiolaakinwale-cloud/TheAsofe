@@ -9,7 +9,6 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import { readAppliedGiftCard } from "@/app/bag/gift-card-actions";
 import { readAppliedDiscount } from "@/app/bag/discount-actions";
 import { shippingFor, STANDARD_SHIPPING_GBP } from "@/lib/shipping";
-import { toMinor } from "@/lib/stripe";
 import { track } from "@/lib/analytics";
 
 export type CheckoutError = { ok: false; error: string };
