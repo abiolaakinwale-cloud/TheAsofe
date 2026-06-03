@@ -6,6 +6,8 @@ import {
   notifyOrderPlacedAdmin,
   notifyOrderPlacedCustomer,
 } from "@/lib/notifications";
+import { recordRedemption } from "@/lib/discounts";
+import { track } from "@/lib/analytics";
 
 const LOW_STOCK_THRESHOLD = 3;
 
@@ -191,8 +193,35 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // 4b. Redeem discount code (if any). Bumps uses_count atomically so
+        //     parallel checkouts cannot over-redeem a single-use code.
+        const customerEmailEarly = session.customer_details?.email ?? order.customer_email;
+        if (order.discount_code && order.discount_amount > 0) {
+          try {
+            await recordRedemption({
+              code:          order.discount_code,
+              orderId:       order.id,
+              customerId:    order.customer_id ?? null,
+              customerEmail: customerEmailEarly,
+              amountPence:   order.discount_amount * 100,
+            });
+          } catch (err) {
+            console.error("[webhook] discount redemption failed", err);
+          }
+        }
+
+        // 4c. Clear the abandonment snapshot — this customer is no longer at risk.
+        try {
+          const idKey = order.customer_id
+            ? `user:${order.customer_id}`
+            : `email:${customerEmailEarly.toLowerCase()}`;
+          await sb.from("bag_snapshots").delete().eq("identity", idKey);
+        } catch (err) {
+          console.error("[webhook] snapshot clear failed", err);
+        }
+
         // 5. Confirmation emails — customer + admin
-        const customerEmail = session.customer_details?.email ?? order.customer_email;
+        const customerEmail = customerEmailEarly;
         const summary = {
           id: order.id,
           customer_email: customerEmail,
@@ -203,6 +232,21 @@ export async function POST(request: NextRequest) {
         };
         await notifyOrderPlacedCustomer(summary);
         await notifyOrderPlacedAdmin(summary);
+
+        await track("purchase_completed", {
+          userId: order.customer_id ?? null,
+          email:  customerEmail,
+        }, {
+          order_id:      order.id,
+          total:         summary.total,
+          subtotal:      order.subtotal,
+          discount_code: order.discount_code ?? null,
+          discount:      order.discount_amount,
+          gift_card:     order.gift_card_discount,
+          shipping:      summary.shipping,
+          items:         summary.items.length,
+          first_order:   true,
+        });
 
         // 6. If a gift card was applied to this order, finalise the redemption
         //    by recording a gift_card_redemptions row and decrementing the

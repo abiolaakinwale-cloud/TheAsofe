@@ -1,11 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { getEnrichedBag } from "@/lib/bag";
 import { formatPrice } from "@/lib/data";
 import { removeFromBag, updateBagQty, saveForLater } from "./actions";
 import { applyGiftCard, removeGiftCard, readAppliedGiftCard } from "./gift-card-actions";
+import { applyDiscountCode, removeDiscountCode, readAppliedDiscount } from "./discount-actions";
+import { restoreBagFromToken } from "./recover-actions";
 import { formatGbpPence } from "@/lib/gift-cards";
+import { shippingFor } from "@/lib/shipping";
+import ShippingProgress from "@/components/ShippingProgress";
+import BagCrossSell from "@/components/BagCrossSell";
+import GuestEmailCapture from "@/components/GuestEmailCapture";
+import ExpressCheckout from "@/components/ExpressCheckout";
+import { getServerSupabase } from "@/lib/supabase/server";
+import { toMinor } from "@/lib/stripe";
 import CheckoutButton from "./CheckoutButton";
 
 export const metadata: Metadata = { title: "Your bag" };
@@ -15,14 +25,43 @@ async function applyAction(formData: FormData) {
   await applyGiftCard(formData);
 }
 
+async function applyDiscountAction(formData: FormData) {
+  "use server";
+  await applyDiscountCode(formData);
+}
+
+async function restoreAction(token: string) {
+  "use server";
+  await restoreBagFromToken(token);
+}
+
 export default async function BagPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; recover?: string; recovered?: string }>;
 }) {
-  const { saved } = await searchParams;
+  const { saved, recover, recovered } = await searchParams;
+
+  // Step 0: cart-recovery deep link from the abandoned-cart email.
+  if (recover && recover !== "invalid") {
+    await restoreAction(recover);
+  }
+
   const bag = await getEnrichedBag();
   const giftCard = await readAppliedGiftCard();
+  const discount = await readAppliedDiscount();
+  const shipping = shippingFor(bag.subtotal);
+
+  // Guest email cookie — drives the GuestEmailCapture default + visibility.
+  const cookieStore = await cookies();
+  const guestEmail = cookieStore.get("bag_email")?.value ?? "";
+  const sb = await getServerSupabase();
+  const { data: { user } } = await sb.auth.getUser();
+  const isGuest = !user;
+
+  const discountPounds = discount ? Math.floor(discount.discountPence / 100) : 0;
+  const giftDiscountPounds = giftCard ? Math.floor(giftCard.applicable_pence / 100) : 0;
+  const finalTotal = Math.max(0, bag.subtotal + shipping.charge - giftDiscountPounds - discountPounds);
 
   if (bag.items.length === 0) {
     return (
@@ -60,6 +99,18 @@ export default async function BagPage({
               Saved to your wishlist. Find it on{" "}
               <Link href="/account/wishlist" className="lux-link" style={{ color: "var(--color-ink)" }}>your wishlist page</Link>.
             </span>
+          </div>
+        )}
+
+        {recovered && (
+          <div className="mb-8 p-4 max-w-3xl text-sm" style={{ backgroundColor: "var(--color-cream)", color: "var(--color-ink)" }}>
+            <span style={{ color: "var(--color-emerald)" }}>✦</span>{" "}
+            Welcome back. Your bag has been restored.
+          </div>
+        )}
+        {recover === "invalid" && (
+          <div className="mb-8 p-4 max-w-3xl text-sm" style={{ backgroundColor: "var(--color-cream)", color: "var(--color-oxblood)" }}>
+            That recovery link has expired. Your saved bag may have been checked out already.
           </div>
         )}
 
@@ -145,21 +196,59 @@ export default async function BagPage({
 
           <aside className="lg:col-span-4 lg:sticky lg:top-32 lg:self-start">
             <div className="p-8 lg:p-10" style={{ backgroundColor: "var(--color-cream)" }}>
+              <ShippingProgress subtotal={bag.subtotal} />
               <p className="eyebrow mb-6" style={{ color: "var(--color-emerald)" }}>The reckoning</p>
               <dl className="space-y-4 text-base">
                 <Row k="Subtotal"  v={formatPrice(bag.subtotal)} />
-                <Row k="Shipping" v="Calculated at checkout" muted />
+                <Row k="Shipping" v={shipping.qualifies ? "Complimentary" : formatPrice(shipping.charge)} muted={shipping.qualifies} />
+                {discount && discount.discountPence > 0 && (
+                  <Row k={`Code · ${discount.code}`} v={`−${formatGbpPence(discount.discountPence)}`} />
+                )}
                 {giftCard && giftCard.applicable_pence > 0 && (
                   <Row k={`Gift card · ${giftCard.code.slice(-9)}`} v={`−${formatGbpPence(giftCard.applicable_pence)}`} />
                 )}
                 <hr style={{ borderColor: "var(--color-rule)" }} />
-                <Row
-                  k="Total"
-                  v={formatPrice(bag.subtotal - Math.floor((giftCard?.applicable_pence ?? 0) / 100))}
-                  bold
-                />
+                <Row k="Total" v={formatPrice(finalTotal)} bold />
               </dl>
+              <div className="mt-8">
+                <ExpressCheckout amountPence={toMinor(finalTotal)} />
+              </div>
               <CheckoutButton />
+
+              {/* Discount code panel */}
+              <div className="mt-6 pt-6 border-t" style={{ borderColor: "var(--color-rule)" }}>
+                {discount ? (
+                  <div>
+                    <p className="text-[10px] tracking-[0.18em] uppercase mb-2" style={{ color: "var(--color-emerald)" }}>
+                      Discount applied
+                    </p>
+                    <p className="font-mono text-xs mb-3" style={{ color: "var(--color-ink)" }}>
+                      {discount.code} · {discount.kind === "percent" ? `${discount.value}% off` : `${formatGbpPence(discount.value)} off`}
+                    </p>
+                    <form action={removeDiscountCode}>
+                      <button type="submit" className="text-[10px] tracking-[0.18em] uppercase lux-link" style={{ color: "var(--color-oxblood)" }}>
+                        Remove code
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <form action={applyDiscountAction} className="flex items-center gap-2">
+                    <input
+                      name="code"
+                      placeholder="WELCOME-XXXX-XXXX"
+                      className="flex-1 h-10 border bg-transparent px-2 text-xs font-mono uppercase tracking-wider"
+                      style={{ borderColor: "var(--color-rule)", color: "var(--color-ink)" }}
+                    />
+                    <button
+                      type="submit"
+                      className="h-10 px-4 text-[10px] tracking-[0.22em] uppercase font-medium border"
+                      style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}
+                    >
+                      Apply
+                    </button>
+                  </form>
+                )}
+              </div>
 
               {/* Gift card panel */}
               <div className="mt-6 pt-6 border-t" style={{ borderColor: "var(--color-rule)" }}>
@@ -202,9 +291,15 @@ export default async function BagPage({
               <p className="text-xs leading-relaxed mt-4" style={{ color: "var(--color-muted)" }}>
                 Each piece ships from its designer via Asofe's London fulfilment. Complimentary returns within 7 days.
               </p>
+
+              {isGuest && (
+                <GuestEmailCapture initialEmail={guestEmail} />
+              )}
             </div>
           </aside>
         </div>
+
+        <BagCrossSell bagSlugs={bag.items.map(i => i.slug)} />
       </div>
     </section>
   );

@@ -7,6 +7,10 @@ import { getEnrichedBag } from "@/lib/bag";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { readAppliedGiftCard } from "@/app/bag/gift-card-actions";
+import { readAppliedDiscount } from "@/app/bag/discount-actions";
+import { shippingFor, STANDARD_SHIPPING_GBP } from "@/lib/shipping";
+import { toMinor } from "@/lib/stripe";
+import { track } from "@/lib/analytics";
 
 export type CheckoutError = { ok: false; error: string };
 
@@ -29,6 +33,14 @@ export async function startCheckout(): Promise<CheckoutError | void> {
   const giftCard = await readAppliedGiftCard();
   const giftDiscountPounds = giftCard ? Math.floor(giftCard.applicable_pence / 100) : 0;
 
+  // Resolve any single-use discount code (welcome/recovery). Re-validated
+  // here so first-order rules + expiry are checked at the actual checkout.
+  const discount = await readAppliedDiscount();
+  const discountPounds = discount ? Math.floor(discount.discountPence / 100) : 0;
+
+  // Shipping economics: free over the threshold, otherwise a flat charge.
+  const shipping = shippingFor(bag.subtotal);
+
   // Pick up the referral cookie (set by proxy.ts on /?ref=CODE landings).
   // We don't validate the code here — finalisation in the webhook checks
   // the code exists and the referee isn't the referrer themselves.
@@ -44,12 +56,14 @@ export async function startCheckout(): Promise<CheckoutError | void> {
       customer_id: user?.id ?? null,
       customer_email: user?.email ?? "guest@asofe.local", // placeholder; Stripe captures the real email
       subtotal: bag.subtotal,
-      total: bag.subtotal - giftDiscountPounds,
-      shipping: 0,
+      total: Math.max(0, bag.subtotal + shipping.charge - giftDiscountPounds - discountPounds),
+      shipping: shipping.charge,
       currency: "GBP",
       status: "pending",
       gift_card_code: giftCard?.code ?? null,
       gift_card_discount: giftDiscountPounds,
+      discount_code:     discount?.code ?? null,
+      discount_amount:   discountPounds,
       referral_code: referralCode,
     })
     .select("id")
@@ -89,22 +103,31 @@ export async function startCheckout(): Promise<CheckoutError | void> {
   const origin = `${proto}://${host}`;
 
   // If a gift card is applied, create a single-use Stripe coupon for the
-  // exact discount and reference it on the session.
+  // exact discount and reference it on the session. Combine with any
+  // discount code into a SINGLE amount_off coupon — Stripe only accepts one
+  // discount per session, so we sum the two.
+  const totalDiscountPence = (giftCard?.applicable_pence ?? 0) + (discount?.discountPence ?? 0);
   let stripeDiscount: { coupon: string } | undefined;
-  if (giftCard && giftCard.applicable_pence > 0) {
+  if (totalDiscountPence > 0) {
     try {
+      const label = [
+        giftCard ? `Gift ${giftCard.code.slice(-9)}` : null,
+        discount ? `${discount.kind === "percent" ? `${discount.value}% off` : "Discount"}` : null,
+      ].filter(Boolean).join(" + ");
       const coupon = await stripe.coupons.create({
-        amount_off: giftCard.applicable_pence,
+        amount_off: totalDiscountPence,
         currency: "gbp",
         duration: "once",
-        name: `Gift card ${giftCard.code.slice(-9)}`,
-        metadata: { gift_card_code: giftCard.code, order_id: order.id },
+        name: label || "Discount",
+        metadata: {
+          order_id: order.id,
+          ...(giftCard && { gift_card_code: giftCard.code, gift_card_pence: String(giftCard.applicable_pence) }),
+          ...(discount && { discount_code: discount.code, discount_pence: String(discount.discountPence) }),
+        },
       });
       stripeDiscount = { coupon: coupon.id };
     } catch (err) {
       console.error("stripe coupon create failed", err);
-      // Fall through — order continues without the discount. Better to charge
-      // full price than fail the whole checkout for a card-application bug.
     }
   }
 
@@ -133,7 +156,25 @@ export async function startCheckout(): Promise<CheckoutError | void> {
       metadata: {
         order_id: order.id,
         ...(giftCard && { gift_card_code: giftCard.code, gift_card_discount_pence: String(giftCard.applicable_pence) }),
+        ...(discount && { discount_code: discount.code, discount_pence: String(discount.discountPence) }),
       },
+      shipping_options: shipping.qualifies
+        ? [{
+            shipping_rate_data: {
+              type: "fixed_amount",
+              display_name: "Complimentary UK delivery",
+              fixed_amount: { amount: 0, currency: "gbp" },
+              delivery_estimate: { minimum: { unit: "business_day", value: 2 }, maximum: { unit: "business_day", value: 4 } },
+            },
+          }]
+        : [{
+            shipping_rate_data: {
+              type: "fixed_amount",
+              display_name: "UK standard delivery",
+              fixed_amount: { amount: toMinor(STANDARD_SHIPPING_GBP), currency: "gbp" },
+              delivery_estimate: { minimum: { unit: "business_day", value: 2 }, maximum: { unit: "business_day", value: 4 } },
+            },
+          }],
       payment_intent_data: { metadata: { order_id: order.id } },
       shipping_address_collection: {
         allowed_countries: ["GB", "IE", "FR", "DE", "NL", "BE", "IT", "ES", "US", "CA"],
@@ -155,6 +196,17 @@ export async function startCheckout(): Promise<CheckoutError | void> {
 
   // Save the session id on the order for traceability.
   await sb.from("orders").update({ stripe_payment_intent_id: session.id }).eq("id", order.id);
+
+  await track("checkout_started", { userId: user?.id ?? null, email: user?.email ?? null }, {
+    order_id:      order.id,
+    subtotal:      bag.subtotal,
+    discount_code: discount?.code ?? null,
+    discount:     discountPounds,
+    gift_card:     giftDiscountPounds,
+    shipping:      shipping.charge,
+    items:         bag.items.length,
+    qualifies_free_shipping: shipping.qualifies,
+  });
 
   redirect(session.url);
 }

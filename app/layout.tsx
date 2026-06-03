@@ -2,9 +2,12 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Cormorant_Garamond } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Suspense } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ReferralBanner from "@/components/ReferralBanner";
+import PostHogProvider from "@/components/PostHogProvider";
+import WelcomeOfferModal from "@/components/WelcomeOfferModal";
 import { getCategories } from "@/lib/queries";
 import { bagCount } from "@/lib/bag";
 import { getServerSupabase } from "@/lib/supabase/server";
@@ -85,17 +88,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     bagCount(),
     sb.auth.getUser(),
   ]);
-  const signedIn = !!userRes.data.user;
+  const user = userRes.data.user;
+  const signedIn = !!user;
   return (
     <html
       lang="en"
       className={`${inter.variable} ${cormorant.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ReferralBanner />
-        <Navigation categories={categories} bagCount={bag} signedIn={signedIn} />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <Suspense fallback={null}>
+          <PostHogProvider userId={user?.id ?? null} email={user?.email ?? null}>
+            <ReferralBanner />
+            <Navigation categories={categories} bagCount={bag} signedIn={signedIn} />
+            <main className="flex-1">{children}</main>
+            {!signedIn && <WelcomeOfferModal />}
+            <Footer />
+          </PostHogProvider>
+        </Suspense>
         <Analytics />
         <SpeedInsights />
       </body>

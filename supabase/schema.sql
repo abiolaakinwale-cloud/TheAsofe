@@ -1228,3 +1228,252 @@ begin
     alter publication supabase_realtime add table public.concierge_messages;
   end if;
 end $$;
+
+-- ─── Phase 7: revenue conversion — BIS, abandonment, marketing consent ─────
+
+-- Back-in-stock subscribers. One row per (email, slug, colour, size) until
+-- fulfilled. notified_at stamped when the dispatch email goes out so the same
+-- subscriber isn't paged twice for the same variant.
+create table if not exists public.back_in_stock_notifications (
+  id           bigserial primary key,
+  user_id      uuid references auth.users(id) on delete set null,
+  email        text not null,
+  product_slug text not null references public.products(slug) on delete cascade,
+  colour       text not null default '',
+  size         text not null,
+  created_at   timestamptz not null default now(),
+  notified_at  timestamptz,
+  unsubscribed_at timestamptz
+);
+
+create unique index if not exists back_in_stock_active_unique
+  on public.back_in_stock_notifications (email, product_slug, colour, size)
+  where notified_at is null and unsubscribed_at is null;
+
+create index if not exists back_in_stock_pending_idx
+  on public.back_in_stock_notifications (product_slug, colour, size)
+  where notified_at is null and unsubscribed_at is null;
+
+alter table public.back_in_stock_notifications enable row level security;
+
+drop policy if exists "user reads own bis"   on public.back_in_stock_notifications;
+drop policy if exists "admin reads all bis"  on public.back_in_stock_notifications;
+drop policy if exists "admin writes bis"     on public.back_in_stock_notifications;
+
+create policy "user reads own bis" on public.back_in_stock_notifications
+  for select using (user_id is not null and user_id = auth.uid());
+create policy "admin reads all bis" on public.back_in_stock_notifications
+  for select using (public.is_admin());
+create policy "admin writes bis" on public.back_in_stock_notifications
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Marketing consent + abandoned-bag email capture. Kept on profiles so we
+-- can suppress all marketing for an opted-out user in one check.
+alter table public.profiles
+  add column if not exists marketing_opt_in        boolean not null default false,
+  add column if not exists marketing_opted_in_at   timestamptz,
+  add column if not exists marketing_opted_out_at  timestamptz;
+
+-- Bag snapshots — one row per identity (signed-in user id, or guest email).
+-- Rewritten on every bag mutation so we always have the current bag for the
+-- abandonment cron. Deleted on successful checkout.
+create table if not exists public.bag_snapshots (
+  identity     text primary key,                    -- 'user:<uuid>' or 'email:<addr>'
+  user_id      uuid references auth.users(id) on delete cascade,
+  email        text not null,
+  items        jsonb not null,
+  subtotal     int  not null check (subtotal >= 0),
+  currency     text not null default 'GBP',
+  updated_at   timestamptz not null default now()
+);
+
+create index if not exists bag_snapshots_updated_idx on public.bag_snapshots (updated_at);
+
+alter table public.bag_snapshots enable row level security;
+drop policy if exists "admin manages snapshots" on public.bag_snapshots;
+create policy "admin manages snapshots" on public.bag_snapshots
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Cart abandonment flow state. stage = how many emails we've sent.
+-- 0=none, 1=T+1h sent, 2=T+24h sent, 3=T+72h sent. Resets to 0 on next bag activity.
+create table if not exists public.cart_abandonment_state (
+  identity     text primary key references public.bag_snapshots(identity) on delete cascade,
+  stage        int  not null default 0 check (stage between 0 and 3),
+  last_sent_at timestamptz
+);
+
+alter table public.cart_abandonment_state enable row level security;
+drop policy if exists "admin manages abandonment" on public.cart_abandonment_state;
+create policy "admin manages abandonment" on public.cart_abandonment_state
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Light, server-side analytics events. We forward to PostHog from server
+-- actions; this table is a durable record + simple admin queries.
+create table if not exists public.analytics_events (
+  id          bigserial primary key,
+  event       text not null,
+  user_id     uuid references auth.users(id) on delete set null,
+  anon_id     text,
+  properties  jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists analytics_events_event_idx   on public.analytics_events (event, created_at desc);
+create index if not exists analytics_events_user_idx    on public.analytics_events (user_id, created_at desc);
+
+alter table public.analytics_events enable row level security;
+drop policy if exists "admin reads events"  on public.analytics_events;
+drop policy if exists "admin writes events" on public.analytics_events;
+create policy "admin reads events"  on public.analytics_events for select using (public.is_admin());
+create policy "admin writes events" on public.analytics_events for insert with check (public.is_admin());
+
+-- ─── Revenue Pack: cart recovery token + welcome discounts + co-purchase ───
+--
+-- 1. Recovery token on bag_snapshots so abandoned-cart emails carry a single
+--    deep link back to /bag?recover=<token> that restores the cookie bag and
+--    optionally applies a 10% recovery discount. Token is unguessable.
+alter table public.bag_snapshots
+  add column if not exists recovery_token text unique;
+
+-- Backfill tokens for any pre-existing rows so the indexed lookup never misses.
+update public.bag_snapshots
+   set recovery_token = encode(gen_random_bytes(16), 'hex')
+ where recovery_token is null;
+
+create index if not exists bag_snapshots_token_idx
+  on public.bag_snapshots(recovery_token) where recovery_token is not null;
+
+-- 2. Discount codes: a thin, single-use, percent-or-fixed code generator used
+--    for the welcome offer modal AND the abandoned-cart recovery email. Gift
+--    cards remain a separate concept (multi-use balance, longer life, GBP).
+create table if not exists public.discount_codes (
+  code               text primary key,
+  kind               text not null check (kind in ('percent','fixed')),
+  value              int  not null check (value > 0),         -- percent (1-100) or pence
+  min_subtotal_pence int  not null default 0,
+  max_uses           int,                                     -- null = unlimited
+  uses_count         int  not null default 0,
+  first_order_only   boolean not null default false,
+  customer_email     text,                                    -- null = any customer
+  source             text,                                    -- 'welcome', 'cart_recovery', 'campaign'
+  expires_at         timestamptz,
+  created_at         timestamptz not null default now()
+);
+
+create index if not exists discount_codes_email_idx on public.discount_codes(customer_email)
+  where customer_email is not null;
+create index if not exists discount_codes_source_idx on public.discount_codes(source);
+
+create table if not exists public.discount_redemptions (
+  id            uuid primary key default gen_random_uuid(),
+  code          text not null references public.discount_codes(code) on delete cascade,
+  order_id      uuid not null references public.orders(id)         on delete cascade,
+  customer_id   uuid references auth.users(id) on delete set null,
+  customer_email text not null,
+  amount_pence  int not null check (amount_pence >= 0),
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists discount_redemptions_code_idx     on public.discount_redemptions(code);
+create index if not exists discount_redemptions_order_idx    on public.discount_redemptions(order_id);
+
+alter table public.orders
+  add column if not exists discount_code     text,
+  add column if not exists discount_amount   int not null default 0;
+
+alter table public.discount_codes        enable row level security;
+alter table public.discount_redemptions  enable row level security;
+
+drop policy if exists "admin reads discount codes" on public.discount_codes;
+drop policy if exists "admin writes discount codes" on public.discount_codes;
+create policy "admin reads discount codes"  on public.discount_codes for select using (public.is_admin());
+create policy "admin writes discount codes" on public.discount_codes for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "admin reads discount redemptions" on public.discount_redemptions;
+create policy "admin reads discount redemptions" on public.discount_redemptions for select using (public.is_admin());
+
+-- 3. Co-purchase view: `product_copurchases` aggregates paid order_items into
+--    "products A and B bought together N times" so the bag cross-sell can
+--    query `WHERE product_slug IN (bag-slugs)` and order by frequency.
+--    Materialised so the bag page stays fast; refresh nightly via cron.
+create materialized view if not exists public.product_copurchases as
+with paid_orders as (
+  select id
+    from public.orders
+   where status in ('paid','packed','dispatched','delivered')
+),
+pairs as (
+  select
+    a.product_slug as slug_a,
+    b.product_slug as slug_b
+  from public.order_items a
+  join public.order_items b
+    on a.order_id = b.order_id
+   and a.product_slug < b.product_slug
+  where a.order_id in (select id from paid_orders)
+)
+select
+  slug_a,
+  slug_b,
+  count(*)::int as bought_together
+  from pairs
+ group by slug_a, slug_b;
+
+create unique index if not exists product_copurchases_pk
+  on public.product_copurchases (slug_a, slug_b);
+create index if not exists product_copurchases_slug_a_idx
+  on public.product_copurchases (slug_a, bought_together desc);
+create index if not exists product_copurchases_slug_b_idx
+  on public.product_copurchases (slug_b, bought_together desc);
+
+-- Recommended next products: aggregates buyers of X who also bought Y across
+-- both pair orderings, returned with bought_together desc. The bag fetches
+-- top 4 recommendations.
+create or replace function public.recommend_with(p_slugs text[], p_limit int default 8)
+returns table (slug text, bought_together int)
+language sql
+stable
+as $$
+  with edges as (
+    select slug_b as slug, bought_together
+      from public.product_copurchases
+     where slug_a = any(p_slugs)
+    union all
+    select slug_a as slug, bought_together
+      from public.product_copurchases
+     where slug_b = any(p_slugs)
+  )
+  select slug, sum(bought_together)::int as bought_together
+    from edges
+   where slug <> all(p_slugs)
+   group by slug
+   order by bought_together desc
+   limit p_limit;
+$$;
+
+-- Atomic discount counter — prevents over-redemption of single-use codes
+-- under racing concurrent checkouts. Returns the post-increment uses_count.
+create or replace function public.increment_discount_uses(p_code text)
+returns int
+language sql
+security definer
+set search_path = public
+as $$
+  update public.discount_codes
+     set uses_count = uses_count + 1
+   where code = p_code
+   returning uses_count;
+$$;
+
+-- Nightly refresh entrypoint for the co-purchase view. Wrapped so we don't
+-- have to grant raw REFRESH MATERIALIZED VIEW to the service role.
+create or replace function public.refresh_copurchases()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  refresh materialized view public.product_copurchases;
+end;
+$$;

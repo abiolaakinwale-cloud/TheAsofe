@@ -2,9 +2,25 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { BAG_LIMITS, readBag, writeBag, type BagItem } from "@/lib/bag";
+import { BAG_LIMITS, getEnrichedBag, readBag, writeBag, type BagItem } from "@/lib/bag";
 import { getAnonSupabase } from "@/lib/supabase/anon";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { saveBagSnapshot } from "@/lib/cart-snapshot";
+
+// Mirror the current cookie bag to the durable snapshot so the abandonment
+// cron can reach guests + signed-in users alike. Best-effort — never throws.
+async function syncSnapshot(): Promise<void> {
+  try {
+    const bag = await getEnrichedBag();
+    if (bag.items.length === 0) return;
+    await saveBagSnapshot({
+      items: bag.items.map(i => ({ slug: i.slug, size: i.size, colour: i.colour, qty: i.qty })),
+      subtotal: bag.subtotal,
+    });
+  } catch (err) {
+    console.error("[bag] snapshot sync failed", err);
+  }
+}
 
 // Look up stock for a specific (slug, colour, size). Falls back to '' for
 // products created before variants (their row has colour='' in stock_levels).
@@ -53,6 +69,7 @@ export async function addToBag(slug: string, size: string, colour: string = "") 
     items.push({ slug, colour: colour || undefined, size, qty: 1 });
   }
   await writeBag(items);
+  await syncSnapshot();
   revalidatePath("/", "layout");
   redirect("/bag");
 }
@@ -72,17 +89,21 @@ export async function updateBagQty(slug: string, colour: string, size: string, q
     }
   }
   await writeBag(next);
+  await syncSnapshot();
   revalidatePath("/", "layout");
 }
 
 export async function removeFromBag(slug: string, colour: string, size: string) {
   const items = await readBag();
   await writeBag(items.filter(i => !sameLine(i, slug, colour, size)));
+  await syncSnapshot();
   revalidatePath("/", "layout");
 }
 
 export async function clearBag() {
   await writeBag([]);
+  // Snapshot is cleared by the checkout / webhook path, not here — manual
+  // clears should not silently drop the abandonment row.
   revalidatePath("/", "layout");
 }
 

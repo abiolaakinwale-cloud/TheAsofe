@@ -31,6 +31,78 @@ async function send(e: Email): Promise<void> {
 
 const orderRef = (id: string) => id.slice(0, 8).toUpperCase();
 
+// ─── Revenue Pack: abandoned-cart + welcome offer ──────────────────────────
+
+export async function notifyAbandonedCart(args: {
+  email: string;
+  items: { slug: string; size: string; qty: number; colour?: string }[];
+  subtotal: number;
+  recoveryToken: string;
+  discountCode: string | null;
+  discountPercent: number | null;
+  stage: 1 | 2 | 3;
+}): Promise<void> {
+  const recoverUrl = `${SITE_URL}/bag?recover=${args.recoveryToken}`;
+  const headline = args.stage === 1
+    ? "Your bag is waiting."
+    : args.stage === 2
+      ? "Still thinking about it?"
+      : "Last call — your bag is about to close.";
+
+  const lines = args.items.map(i =>
+    `  ${i.qty} × ${i.slug.replace(/-/g, " ")} (size ${i.size}${i.colour ? `, ${i.colour}` : ""})`
+  ).join("\n");
+
+  const discountBlock = args.discountCode && args.discountPercent
+    ? [
+        ``,
+        `As a thank-you for coming back, here's ${args.discountPercent}% off:`,
+        `    ${args.discountCode}`,
+        `It applies automatically when you return via the link above. Valid 7 days.`,
+      ].join("\n")
+    : "";
+
+  await send({
+    to: args.email,
+    subject: headline,
+    text: [
+      headline,
+      ``,
+      `You left these in your bag at Asofe:`,
+      lines,
+      ``,
+      `Subtotal: ${formatPrice(args.subtotal)}`,
+      ``,
+      `Resume here: ${recoverUrl}`,
+      discountBlock,
+      ``,
+      `If you'd rather not receive these notes, reply with the word STOP and we'll suppress this address.`,
+    ].filter(Boolean).join("\n"),
+  });
+}
+
+export async function notifyWelcomeOffer(args: {
+  email: string;
+  code: string;
+  percent: number;
+  expiryDays: number;
+}): Promise<void> {
+  await send({
+    to: args.email,
+    subject: `${args.percent}% off your first piece — your Asofe code`,
+    text: [
+      `Welcome to Asofe.`,
+      ``,
+      `Your code: ${args.code}`,
+      `${args.percent}% off your first order. Valid ${args.expiryDays} days.`,
+      ``,
+      `Apply at the bag: ${SITE_URL}/bag`,
+      ``,
+      `We write rarely — new collections, atelier visits, the occasional considered essay.`,
+    ].join("\n"),
+  });
+}
+
 // ─── Applications ──────────────────────────────────────────────────────────
 
 export async function notifyApplicationSubmitted(app: {
@@ -557,6 +629,96 @@ export async function notifyLowStock(args: {
 }
 
 // ─── Monthly recap (cron-fired on the 1st of each month) ───────────────────
+
+// ─── Back in stock ─────────────────────────────────────────────────────────
+
+export async function notifyBackInStock(args: {
+  email: string;
+  product: { slug: string; name: string; image?: string };
+  colour: string;
+  size: string;
+}): Promise<void> {
+  const productUrl = `${SITE_URL}/products/${args.product.slug}`;
+  await send({
+    to: args.email,
+    subject: `Back in stock — ${args.product.name}`,
+    text: [
+      `${args.product.name} is back in your size.`,
+      ``,
+      `  Size:   ${args.size}`,
+      args.colour ? `  Colour: ${args.colour}` : null,
+      ``,
+      `Pieces sell quickly once they return. View and add to bag:`,
+      productUrl,
+      ``,
+      `You only receive this email once per restock. If you'd rather not, no action needed — your subscription is now closed.`,
+    ].filter((l): l is string => l !== null).join("\n"),
+  });
+}
+
+// ─── Cart abandonment ──────────────────────────────────────────────────────
+
+export async function notifyCartAbandonment(args: {
+  email: string;
+  stage: 1 | 2 | 3;
+  items: { name: string; brand: string; price: number; image?: string }[];
+  subtotal: number;
+  recoveryUrl: string;
+  discountCode?: string;
+}): Promise<void> {
+  const lines = args.items
+    .map(i => `  ${i.name} — ${i.brand} — ${formatPrice(i.price)}`)
+    .join("\n");
+
+  const subjects = {
+    1: "Your bag is waiting at Asofe",
+    2: "Still thinking? Here's what other buyers said",
+    3: "A small thank-you to take your bag home",
+  } as const;
+
+  const bodies = {
+    1: [
+      `The pieces you chose are still in your bag.`,
+      ``,
+      lines,
+      ``,
+      `Subtotal: ${formatPrice(args.subtotal)}`,
+      ``,
+      `Return to your bag in one click:`,
+      args.recoveryUrl,
+      ``,
+      `Stock at Asofe is finite — designers produce in small batches. Best to come back soon.`,
+    ],
+    2: [
+      `Your bag is still here.`,
+      ``,
+      lines,
+      ``,
+      `Hundreds of buyers have left verified reviews for pieces on Asofe. Every order is fulfilled from our London hub with complimentary 7-day returns.`,
+      ``,
+      `Return to your bag:`,
+      args.recoveryUrl,
+    ],
+    3: [
+      `Last note from us about your bag.`,
+      ``,
+      lines,
+      ``,
+      args.discountCode
+        ? `Use code ${args.discountCode} at checkout — £10 off, valid for 24 hours.`
+        : `If we held onto a piece you wanted, we'd want to know. Reply if anything's stopping you.`,
+      ``,
+      `Return to your bag:`,
+      args.recoveryUrl,
+    ],
+  } as const;
+
+  await send({
+    to: args.email,
+    subject: subjects[args.stage],
+    text: bodies[args.stage].join("\n"),
+  });
+}
 
 export async function notifyDesignerMonthlyRecap(args: {
   sellerEmail: string;
