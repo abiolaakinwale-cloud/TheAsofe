@@ -3,9 +3,14 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { addToBag } from "@/app/bag/actions";
 import HeartButton from "@/components/HeartButton";
+import BackInStockButton from "@/components/BackInStockButton";
+import { trackClient } from "@/components/PostHogProvider";
 
 type Props = {
   productSlug: string;
+  productName: string;
+  brandSlug: string;
+  price: number;
   sizes: string[];
   /** Stock keyed by `${colour}|${size}`. Pre-variants stock is under "". */
   stock: Record<string, number>;
@@ -18,6 +23,9 @@ type Props = {
 
 export default function AddToBag({
   productSlug,
+  productName,
+  brandSlug,
+  price,
   sizes,
   stock,
   colours,
@@ -67,12 +75,18 @@ export default function AddToBag({
       return;
     }
     setError(null);
+    const variantColour = colours && colours.length > 1 ? chosenColour : "";
+    trackClient("add_to_cart", {
+      slug: productSlug,
+      name: productName,
+      brand: brandSlug,
+      price,
+      size: chosenSize,
+      colour: variantColour || defaultColour,
+      backorder: chosenIsBackorder,
+    });
     startTransition(async () => {
       try {
-        // Send the variant's colour through to the server action. If the product
-        // has no variants we pass the empty fallback.
-        const variantColour =
-          colours && colours.length > 1 ? chosenColour : "";
         await addToBag(productSlug, chosenSize, variantColour);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -80,6 +94,14 @@ export default function AddToBag({
       }
     });
   }
+
+  const chosenStock = chosenSize ? qtyFor(chosenColour, chosenSize) : 0;
+  const scarcityNote =
+    chosenSize && chosenStock > 0 && chosenStock <= 2
+      ? chosenStock === 1
+        ? `Last one in size ${chosenSize}`
+        : `Only ${chosenStock} left in size ${chosenSize}`
+      : null;
 
   return (
     <>
@@ -173,22 +195,40 @@ export default function AddToBag({
         </ul>
       </div>
 
-      <div className="space-y-3 pt-2">
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={pending || allBlocked}
-          className="w-full py-4 text-[12px] tracking-[0.18em] uppercase font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}
+      {scarcityNote && (
+        <p
+          className="text-[11px] tracking-[0.18em] uppercase mt-3"
+          style={{ color: "var(--color-oxblood)" }}
+          role="status"
         >
-          {allBlocked
-            ? "Sold out"
-            : pending
+          {scarcityNote}
+        </p>
+      )}
+
+      <div className="space-y-3 pt-2" data-pdp-cta>
+        {allBlocked ? (
+          <BackInStockButton
+            productSlug={productSlug}
+            productName={productName}
+            colour={colours && colours.length > 1 ? chosenColour : defaultColour}
+            sizes={sizes}
+            preselectedSize={chosenSize}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={pending}
+            className="w-full py-4 text-[12px] tracking-[0.18em] uppercase font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}
+          >
+            {pending
               ? "Adding…"
               : chosenIsBackorder
                 ? `Order now · made in ${leadTimeWeeks} ${leadTimeWeeks === 1 ? "week" : "weeks"}`
                 : "Add to bag"}
-        </button>
+          </button>
+        )}
         <HeartButton slug={productSlug} initial={inWishlist} size="detail" returnTo={`/products/${productSlug}`} />
         {error && (
           <p className="text-sm" style={{ color: "var(--color-oxblood)" }}>{error}</p>

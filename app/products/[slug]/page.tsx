@@ -22,6 +22,9 @@ import { askDesigner } from "./_components/actions";
 import ProductCard from "@/components/ProductCard";
 import Stars from "@/components/Stars";
 import RecentlyViewed from "@/components/RecentlyViewed";
+import PdpTrustStrip from "@/components/PdpTrustStrip";
+import StickyAddToBagBar from "@/components/StickyAddToBagBar";
+import PdpViewTracker from "./_components/PdpViewTracker";
 
 export async function generateStaticParams() {
   const products = await getProducts();
@@ -202,6 +205,9 @@ export default async function ProductPage({
 
             <AddToBag
               productSlug={product.slug}
+              productName={product.name}
+              brandSlug={product.brand}
+              price={product.price}
               sizes={product.sizes}
               stock={stock}
               colours={product.colours}
@@ -210,6 +216,8 @@ export default async function ProductPage({
               leadTimeWeeks={product.leadTimeWeeks}
               inWishlist={inWishlist}
             />
+
+            <PdpTrustStrip />
 
             {/* Seller attribution */}
             {seller && (
@@ -444,6 +452,21 @@ export default async function ProductPage({
       )}
 
       <RecentlyViewed excludeSlug={slug} />
+
+      <StickyAddToBagBar
+        productName={product.name}
+        brandName={brand?.name}
+        price={product.price}
+      />
+
+      <PdpViewTracker
+        slug={product.slug}
+        name={product.name}
+        brand={product.brand}
+        category={product.category}
+        price={product.price}
+        inStock={totalStock > 0}
+      />
     </>
   );
 }
