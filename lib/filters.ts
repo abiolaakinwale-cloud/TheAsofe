@@ -1,4 +1,4 @@
-import type { Product } from "./data";
+import type { Brand, Product } from "./data";
 
 export type SortKey = "newest" | "price-asc" | "price-desc" | "name";
 
@@ -92,3 +92,67 @@ export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "price-desc", label: "Price · high to low" },
   { value: "name",       label: "Name · A to Z" },
 ];
+
+export type FacetCounts = {
+  brands: Record<string, number>;
+  sizes: Record<string, number>;
+  newArrival: number;
+};
+
+/**
+ * For each facet, count products that would survive if every *other* selected
+ * facet stayed. This is the Farfetch/NaP behaviour — clicking a brand updates
+ * the size counts (still reflecting your price range) but leaves the brand
+ * column showing what each *other* brand would yield.
+ */
+export function computeFacetCounts(products: Product[], current: Filters): FacetCounts {
+  const without = (key: keyof Filters): Filters => ({ ...current, [key]: Array.isArray(current[key]) ? [] : key === "newOnly" ? false : null });
+
+  const forBrands = applyFilters(products, { ...current, brands: [] });
+  const forSizes  = applyFilters(products, { ...current, sizes: [] });
+  const forNew    = applyFilters(products, without("newOnly"));
+
+  const brands: Record<string, number> = {};
+  for (const p of forBrands) brands[p.brand] = (brands[p.brand] ?? 0) + 1;
+
+  const sizes: Record<string, number> = {};
+  for (const p of forSizes) for (const s of p.sizes) sizes[s] = (sizes[s] ?? 0) + 1;
+
+  const newArrival = forNew.filter(p => p.newArrival).length;
+
+  return { brands, sizes, newArrival };
+}
+
+export type ActiveChip = {
+  key: "brand" | "size" | "price" | "new";
+  value: string;
+  label: string;
+};
+
+export function activeChips(current: Filters, brandsBySlug: Map<string, Brand>): ActiveChip[] {
+  const chips: ActiveChip[] = [];
+  for (const slug of current.brands) {
+    chips.push({ key: "brand", value: slug, label: brandsBySlug.get(slug)?.name ?? slug });
+  }
+  for (const size of current.sizes) {
+    chips.push({ key: "size", value: size, label: `Size ${size}` });
+  }
+  if (current.priceMin !== null || current.priceMax !== null) {
+    const a = current.priceMin !== null ? `£${current.priceMin}` : "Any";
+    const b = current.priceMax !== null ? `£${current.priceMax}` : "Any";
+    chips.push({ key: "price", value: "price", label: `${a} – ${b}` });
+  }
+  if (current.newOnly) {
+    chips.push({ key: "new", value: "1", label: "New arrivals" });
+  }
+  return chips;
+}
+
+export function removeChip(current: Filters, chip: ActiveChip): Filters {
+  switch (chip.key) {
+    case "brand": return { ...current, brands: current.brands.filter(b => b !== chip.value) };
+    case "size":  return { ...current, sizes:  current.sizes.filter(s => s !== chip.value) };
+    case "price": return { ...current, priceMin: null, priceMax: null };
+    case "new":   return { ...current, newOnly: false };
+  }
+}

@@ -9,8 +9,9 @@ import {
 } from "@/lib/queries";
 import ProductCard from "@/components/ProductCard";
 import FilterSidebar from "@/components/FilterSidebar";
+import ActiveFilterChips from "@/components/ActiveFilterChips";
 import Pagination from "@/components/Pagination";
-import { applyFilters, parseFilters } from "@/lib/filters";
+import { applyFilters, computeFacetCounts, parseFilters } from "@/lib/filters";
 import { paginate } from "@/lib/pagination";
 import { findSubcategory, SUBCATEGORIES } from "@/lib/subcategories";
 import { getWishlistSlugs } from "@/lib/wishlist";
@@ -72,6 +73,7 @@ export default async function SubcategoryPage({
 
   const filters = parseFilters(sp);
   const filtered = applyFilters(products, filters);
+  const facetCounts = computeFacetCounts(products, filters);
   const pageData = paginate(filtered, sp.page);
 
   return (
@@ -105,9 +107,20 @@ export default async function SubcategoryPage({
                 current={filters}
                 totalCount={products.length}
                 visibleCount={filtered.length}
+                facetCounts={facetCounts}
+                surface="category"
               />
             </div>
             <div className="lg:col-span-9 mt-8 lg:mt-0">
+              {products.length > 0 && (
+                <ActiveFilterChips
+                  current={filters}
+                  brands={brandsRepresented}
+                  visibleCount={filtered.length}
+                  totalCount={products.length}
+                  surface="category"
+                />
+              )}
               {products.length === 0 ? (
                 <p className="text-center py-24 text-sm" style={{ color: "var(--color-muted)" }}>
                   No {sub.name.toLowerCase()} on the floor yet. Try another part of the {c.name.toLowerCase()} edit.

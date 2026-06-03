@@ -6,10 +6,12 @@ import type { Brand } from "@/lib/data";
 import {
   type Filters,
   type SortKey,
+  type FacetCounts,
   serializeFilters,
   SORT_OPTIONS,
   activeFilterCount,
 } from "@/lib/filters";
+import { trackClient } from "./PostHogProvider";
 
 type Props = {
   brands: Brand[];
@@ -18,6 +20,8 @@ type Props = {
   current: Filters;
   totalCount: number;
   visibleCount: number;
+  facetCounts: FacetCounts;
+  surface: "category" | "new-arrivals" | "search";
 };
 
 const SORT_LABEL: Record<SortKey, string> = {
@@ -27,7 +31,7 @@ const SORT_LABEL: Record<SortKey, string> = {
   name:       "Name · A to Z",
 };
 
-export default function FilterSidebar({ brands, sizes, priceBounds, current, totalCount, visibleCount }: Props) {
+export default function FilterSidebar({ brands, sizes, priceBounds, current, totalCount, visibleCount, facetCounts, surface }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -52,15 +56,25 @@ export default function FilterSidebar({ brands, sizes, priceBounds, current, tot
 
   function toggle<K extends "brands" | "sizes">(key: K, value: string) {
     const list = current[key] as string[];
-    const next = list.includes(value) ? list.filter(v => v !== value) : [...list, value];
+    const adding = !list.includes(value);
+    const next = adding ? [...list, value] : list.filter(v => v !== value);
+    trackClient("filter_applied", { surface, key, value, adding, results_count: visibleCount });
     apply({ ...current, [key]: next });
   }
-  function setSort(sort: SortKey)         { apply({ ...current, sort }); }
-  function setNewOnly(v: boolean)         { apply({ ...current, newOnly: v }); }
+  function setSort(sort: SortKey)         {
+    trackClient("filter_applied", { surface, key: "sort", value: sort, results_count: visibleCount });
+    apply({ ...current, sort });
+  }
+  function setNewOnly(v: boolean)         {
+    trackClient("filter_applied", { surface, key: "newOnly", value: v, results_count: visibleCount });
+    apply({ ...current, newOnly: v });
+  }
   function setPriceBounds(min: number | null, max: number | null) {
+    trackClient("filter_applied", { surface, key: "price", value: `${min ?? ""}-${max ?? ""}` });
     apply({ ...current, priceMin: min, priceMax: max });
   }
   function clearAll() {
+    trackClient("filter_applied", { surface, key: "clear_all" });
     apply({ ...current, brands: [], sizes: [], priceMin: null, priceMax: null, newOnly: false });
   }
 
@@ -104,19 +118,30 @@ export default function FilterSidebar({ brands, sizes, priceBounds, current, tot
           />
           {open.brand && (
             <ul className="pb-5 pt-1 space-y-2 max-h-72 overflow-y-auto pr-2 text-sm">
-              {brands.map(b => (
-                <li key={b.slug}>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={current.brands.includes(b.slug)}
-                      onChange={() => toggle("brands", b.slug)}
-                      className="w-3.5 h-3.5"
-                    />
-                    <span>{b.name}</span>
-                  </label>
-                </li>
-              ))}
+              {brands.map(b => {
+                const count = facetCounts.brands[b.slug] ?? 0;
+                const selected = current.brands.includes(b.slug);
+                const disabled = count === 0 && !selected;
+                return (
+                  <li key={b.slug}>
+                    <label
+                      className={`flex items-center gap-3 ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        disabled={disabled}
+                        onChange={() => toggle("brands", b.slug)}
+                        className="w-3.5 h-3.5"
+                      />
+                      <span className="flex-1">{b.name}</span>
+                      <span className="tabular-nums text-[11px]" style={{ color: "var(--color-muted)" }}>
+                        ({count})
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </>
@@ -149,19 +174,26 @@ export default function FilterSidebar({ brands, sizes, priceBounds, current, tot
             <ul className="pb-5 pt-2 grid grid-cols-4 gap-2 text-xs">
               {sizes.map(s => {
                 const active = current.sizes.includes(s);
+                const count = facetCounts.sizes[s] ?? 0;
+                const disabled = count === 0 && !active;
                 return (
                   <li key={s}>
                     <button
                       type="button"
                       onClick={() => toggle("sizes", s)}
-                      className="w-full py-2 tracking-[0.1em] uppercase border"
+                      disabled={disabled}
+                      title={disabled ? "Not available with current filters" : `${count} pieces`}
+                      className="w-full py-2 tracking-[0.1em] uppercase border flex flex-col items-center justify-center min-h-[44px] disabled:cursor-not-allowed"
                       style={{
                         borderColor: active ? "var(--color-ink)" : "var(--color-rule)",
                         backgroundColor: active ? "var(--color-ink)" : "transparent",
                         color: active ? "var(--color-ground)" : "var(--color-ink)",
+                        opacity: disabled ? 0.35 : 1,
+                        textDecoration: disabled ? "line-through" : "none",
                       }}
                     >
-                      {s}
+                      <span>{s}</span>
+                      <span className="text-[9px] tabular-nums opacity-70 -mt-px">{count}</span>
                     </button>
                   </li>
                 );
@@ -185,7 +217,10 @@ export default function FilterSidebar({ brands, sizes, priceBounds, current, tot
               onChange={e => setNewOnly(e.target.checked)}
               className="w-3.5 h-3.5"
             />
-            <span style={{ color: current.newOnly ? "var(--color-accent)" : undefined }}>New arrivals only</span>
+            <span className="flex-1" style={{ color: current.newOnly ? "var(--color-accent)" : undefined }}>New arrivals only</span>
+            <span className="tabular-nums text-[11px]" style={{ color: "var(--color-muted)" }}>
+              ({facetCounts.newArrival})
+            </span>
           </label>
         </div>
       )}

@@ -4,8 +4,9 @@ import { getBrands, getNewArrivals } from "@/lib/queries";
 import { getWishlistSlugs } from "@/lib/wishlist";
 import ProductCard from "@/components/ProductCard";
 import FilterSidebar from "@/components/FilterSidebar";
+import ActiveFilterChips from "@/components/ActiveFilterChips";
 import Pagination from "@/components/Pagination";
-import { applyFilters, parseFilters } from "@/lib/filters";
+import { applyFilters, computeFacetCounts, parseFilters } from "@/lib/filters";
 import { paginate } from "@/lib/pagination";
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default async function NewArrivalsPage({
 
   const filters = parseFilters(sp);
   const filtered = applyFilters(products, filters);
+  const facetCounts = computeFacetCounts(products, filters);
   const pageData = paginate(filtered, sp.page);
 
   return (
@@ -69,9 +71,20 @@ export default async function NewArrivalsPage({
                 current={filters}
                 totalCount={products.length}
                 visibleCount={filtered.length}
+                facetCounts={facetCounts}
+                surface="new-arrivals"
               />
             </div>
             <div className="lg:col-span-9 mt-8 lg:mt-0">
+              {products.length > 0 && (
+                <ActiveFilterChips
+                  current={filters}
+                  brands={brandsRepresented}
+                  visibleCount={filtered.length}
+                  totalCount={products.length}
+                  surface="new-arrivals"
+                />
+              )}
               {products.length === 0 ? (
                 <p className="text-center py-24 text-sm" style={{ color: "var(--color-muted)" }}>
                   No pieces marked as new arrivals yet. Check back shortly — designers tag fresh stock as it lands.
