@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { previewPayout } from "@/lib/payouts";
-import { notifyPayoutStatement, notifyPayoutPaid } from "@/lib/notifications";
+import { buildSellerRecap } from "@/lib/seller-recap";
+import { notifyPayoutStatement, notifyPayoutPaid, notifyDesignerMonthlyRecap } from "@/lib/notifications";
 import { logAction } from "@/lib/audit";
 
 async function requireAdmin() {
@@ -228,4 +229,58 @@ export async function cancelPayout(id: string) {
 
   revalidatePath("/admin/payouts");
   revalidatePath(`/admin/payouts/${id}`);
+}
+
+// Manual trigger — fires the monthly recap email for a single brand for the
+// most recently completed calendar month. Useful for previewing the digest a
+// designer would receive on the 1st of next month, or for resending after a
+// cron failure (clear brands.last_recap_sent_at first if you've already sent).
+export async function sendDesignerMonthlyRecap(brandSlug: string) {
+  await requireAdmin();
+  const admin = getAdminSupabase();
+
+  const now = new Date();
+  const periodEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(),     0));
+  const periodStart = new Date(Date.UTC(periodEnd.getUTCFullYear(), periodEnd.getUTCMonth(), 1));
+  const startISO = periodStart.toISOString().slice(0, 10);
+  const endISO   = periodEnd.toISOString().slice(0, 10);
+  const periodLabel = periodStart.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+
+  const { data: seller } = await admin
+    .from("profiles")
+    .select("email")
+    .eq("brand", brandSlug)
+    .eq("role", "seller")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!seller?.email) throw new Error("No seller account on this brand.");
+
+  const recap = await buildSellerRecap(brandSlug, startISO, endISO);
+  if (!recap) throw new Error("Brand not found.");
+
+  await notifyDesignerMonthlyRecap({
+    sellerEmail: seller.email,
+    brandName: recap.brandName,
+    brandSlug: recap.brand,
+    periodLabel,
+    delivered_orders: recap.delivered_orders,
+    pieces_sold: recap.pieces_sold,
+    gross_pence: recap.gross_pence,
+    pending_payout_pence: recap.pending_payout_pence,
+    top_piece: recap.top_piece,
+    top_wishlisted: recap.top_wishlisted,
+    new_reviews: recap.new_reviews,
+    new_review_avg: recap.new_review_avg,
+    pending_questions: recap.pending_questions,
+  });
+  await admin.from("brands").update({ last_recap_sent_at: new Date().toISOString() }).eq("slug", brandSlug);
+  await logAction({
+    action: "monthly_recap.sent_manual",
+    targetType: "brand",
+    targetId: brandSlug,
+    metadata: { period: `${startISO}…${endISO}` },
+  });
+
+  revalidatePath("/admin/payouts");
 }

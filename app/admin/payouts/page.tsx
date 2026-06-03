@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { formatDate, formatPrice } from "@/lib/account";
+import { sendDesignerMonthlyRecap } from "./actions";
 
 const STATUSES = ["draft", "sent", "paid", "cancelled"] as const;
 type Status = typeof STATUSES[number];
@@ -28,9 +29,10 @@ export default async function AdminPayoutsList({
   if (filter) q = q.eq("status", filter);
   if (brand)  q = q.eq("brand", brand);
 
-  const [{ data: payouts }, counts] = await Promise.all([
+  const [{ data: payouts }, counts, { data: recapBrands }] = await Promise.all([
     q,
     Promise.all(STATUSES.map(s => sb.from("payouts").select("id", { count: "exact", head: true }).eq("status", s))),
+    sb.from("brands").select("slug, name, last_recap_sent_at").order("name", { ascending: true }),
   ]);
 
   return (
@@ -68,6 +70,34 @@ export default async function AdminPayoutsList({
           </span>
         )}
       </nav>
+
+      {!filter && !brand && recapBrands && recapBrands.length > 0 && (
+        <section className="mb-16 p-6 lg:p-8" style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)" }}>
+          <div className="flex items-baseline justify-between flex-wrap gap-3 mb-5">
+            <h2 className="eyebrow" style={{ color: "var(--color-emerald)" }}>Monthly designer recap</h2>
+            <p className="text-xs" style={{ color: "var(--color-muted)" }}>
+              Auto-fires 1st of each month, 09:00 UTC. Trigger manually below to preview or resend.
+            </p>
+          </div>
+          <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {recapBrands.map(b => (
+              <li key={b.slug} className="flex items-center justify-between gap-3 px-4 py-3" style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)" }}>
+                <div className="min-w-0">
+                  <p className="text-sm truncate" style={{ color: "var(--color-ink)" }}>{b.name}</p>
+                  <p className="text-[10px] tracking-[0.18em] uppercase" style={{ color: "var(--color-muted)" }}>
+                    {b.last_recap_sent_at ? `Last sent ${formatDate(b.last_recap_sent_at)}` : "Never sent"}
+                  </p>
+                </div>
+                <form action={sendDesignerMonthlyRecap.bind(null, b.slug)}>
+                  <button type="submit" className="text-[10px] tracking-[0.18em] uppercase lux-link" style={{ color: "var(--color-cobalt)" }}>
+                    Send →
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {!payouts || payouts.length === 0 ? (
         <p className="text-sm" style={{ color: "var(--color-muted)" }}>No payouts in this view.</p>

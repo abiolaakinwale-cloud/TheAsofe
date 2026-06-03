@@ -794,6 +794,11 @@ alter table public.brands
   add column if not exists commission_rate numeric(4,3) not null default 0.300
     check (commission_rate >= 0 and commission_rate <= 1);
 
+-- Stamp set by the monthly-recap cron so a re-run on the same calendar month
+-- doesn't double-send to designers. Reset by simply nulling the column.
+alter table public.brands
+  add column if not exists last_recap_sent_at timestamptz;
+
 create table if not exists public.payouts (
   id                  uuid primary key default gen_random_uuid(),
   brand               text not null references public.brands(slug) on delete restrict,

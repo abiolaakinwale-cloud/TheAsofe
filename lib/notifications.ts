@@ -555,3 +555,68 @@ export async function notifyLowStock(args: {
     ].join("\n"),
   });
 }
+
+// ─── Monthly recap (cron-fired on the 1st of each month) ───────────────────
+
+export async function notifyDesignerMonthlyRecap(args: {
+  sellerEmail: string;
+  brandName: string;
+  brandSlug: string;
+  periodLabel: string;          // e.g. "May 2026"
+  delivered_orders: number;
+  pieces_sold: number;
+  gross_pence: number;
+  pending_payout_pence: number;
+  top_piece: { slug: string; name: string; units: number } | null;
+  top_wishlisted: { slug: string; name: string; count: number } | null;
+  new_reviews: number;
+  new_review_avg: number;
+  pending_questions: number;
+}): Promise<void> {
+  const gbp = (p: number) => formatPrice(p / 100);
+  const idle = args.delivered_orders === 0 && args.pieces_sold === 0;
+
+  const lines = [
+    `${args.brandName} — ${args.periodLabel} recap`,
+    ``,
+    idle
+      ? `No deliveries this month. We'll keep the floor lit and the door open — here's what's stirring underneath.`
+      : `Here's how ${args.brandName} performed across Asofe this month.`,
+    ``,
+    `· Sales`,
+    `    Pieces sold: ${args.pieces_sold}`,
+    `    Orders delivered: ${args.delivered_orders}`,
+    `    Gross revenue: ${gbp(args.gross_pence)}`,
+    ``,
+    `· Payouts`,
+    `    Building toward next statement: ${gbp(args.pending_payout_pence)}`,
+    `    (Net of Asofe's commission. Settles on the next monthly cycle.)`,
+    ``,
+    `· Top piece this month`,
+    args.top_piece
+      ? `    ${args.top_piece.name} — ${args.top_piece.units} sold`
+      : `    No piece led the month — variety across the catalogue.`,
+    ``,
+    `· What customers are watching`,
+    args.top_wishlisted
+      ? `    ${args.top_wishlisted.name} — ${args.top_wishlisted.count} new wishlist saves`
+      : `    No new wishlist activity this month.`,
+    ``,
+    `· Reviews landed: ${args.new_reviews}${args.new_review_avg > 0 ? ` · average ${args.new_review_avg.toFixed(1)}★` : ""}`,
+    args.pending_questions > 0
+      ? `· ${args.pending_questions} customer question${args.pending_questions === 1 ? "" : "s"} awaiting your answer — please reply this week.`
+      : `· No customer questions waiting.`,
+    ``,
+    `Full numbers: ${SITE_URL}/dashboard`,
+    args.pending_questions > 0 ? `Reply to questions: ${SITE_URL}/dashboard/questions` : ``,
+    ``,
+    `With thanks,`,
+    `Asofe`,
+  ].filter(l => l !== undefined);
+
+  await send({
+    to: args.sellerEmail,
+    subject: `${args.brandName} · ${args.periodLabel} recap`,
+    text: lines.join("\n"),
+  });
+}

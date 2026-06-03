@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/scheduled-gift-cards",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/designer-monthly-recap",
+      "schedule": "0 9 1 * *"
     }
   ]
 }
