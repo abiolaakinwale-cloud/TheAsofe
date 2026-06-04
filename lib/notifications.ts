@@ -2,8 +2,7 @@ import "server-only";
 import { Resend } from "resend";
 import { formatPrice } from "./data";
 
-// Sender. Swap to onboarding@theasofe.com after the domain is verified in Resend.
-const FROM = "Asofe <orders@resend.dev>";
+const FROM = "Asofe <orders@theasofe.com>";
 const ADMIN_EMAIL = "correspondence@theasofe.com";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://theasofe.vercel.app";
 
