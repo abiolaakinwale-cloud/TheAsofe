@@ -32,6 +32,8 @@ export default async function AdminOrdersPage({
     STATUSES.map(s => sb.from("orders").select("id", { count: "exact", head: true }).eq("status", s))
   );
 
+  const exportHref = `/admin/orders/export?status=${filter ?? "paid"}`;
+
   return (
     <>
       <p className="eyebrow mb-4" style={{ color: "var(--color-oxblood)" }}>Orders</p>
@@ -39,7 +41,7 @@ export default async function AdminOrdersPage({
         {orders?.length ?? 0} {filter ? `${filter} ` : ""}{(orders?.length ?? 0) === 1 ? "order" : "orders"}.
       </h1>
 
-      <nav className="flex flex-wrap gap-x-6 gap-y-2 mb-12 text-[11px] tracking-[0.18em] uppercase font-medium">
+      <nav className="flex flex-wrap gap-x-6 gap-y-2 mb-6 text-[11px] tracking-[0.18em] uppercase font-medium">
         <Link href="/admin/orders" className="lux-link" style={{ color: !filter ? "var(--color-ink)" : "var(--color-muted)" }}>All</Link>
         {STATUSES.map((s, i) => {
           const count = allCountsByStatus[i].count ?? 0;
@@ -50,6 +52,12 @@ export default async function AdminOrdersPage({
           );
         })}
       </nav>
+
+      <p className="mb-12 text-[11px] tracking-[0.18em] uppercase font-medium">
+        <a href={exportHref} className="lux-link" style={{ color: "var(--color-ink-soft)" }}>
+          Export {filter ?? "paid"} → Royal Mail Click & Drop CSV
+        </a>
+      </p>
 
       {(orders ?? []).length === 0 ? (
         <p className="text-sm py-6" style={{ color: "var(--color-muted)" }}>No orders {filter ? `in '${filter}'` : "yet"}.</p>
