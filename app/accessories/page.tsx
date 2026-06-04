@@ -5,7 +5,7 @@ import ProductCard from "@/components/ProductCard";
 import FilterSidebar from "@/components/FilterSidebar";
 import SubcategoryNav from "@/components/SubcategoryNav";
 import Pagination from "@/components/Pagination";
-import { applyFilters, parseFilters } from "@/lib/filters";
+import { applyFilters, computeFacetCounts, parseFilters } from "@/lib/filters";
 import { paginate } from "@/lib/pagination";
 import { getSubcategories } from "@/lib/subcategories";
 import { getWishlistSlugs } from "@/lib/wishlist";
@@ -52,6 +52,7 @@ export default async function AccessoriesPage({
 
   const filters = parseFilters(sp);
   const filtered = applyFilters(products, filters);
+  const facetCounts = computeFacetCounts(products, filters);
   const pageData = paginate(filtered, sp.page);
 
   return (
@@ -90,6 +91,8 @@ export default async function AccessoriesPage({
                 current={filters}
                 totalCount={products.length}
                 visibleCount={filtered.length}
+                facetCounts={facetCounts}
+                surface="category"
               />
             </div>
             <div className="lg:col-span-9 mt-8 lg:mt-0">

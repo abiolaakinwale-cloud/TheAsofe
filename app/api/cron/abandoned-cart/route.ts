@@ -13,7 +13,7 @@ const STAGES = [
   { stage: 1, afterMs: 1  * 3_600_000, withDiscount: false },
   { stage: 2, afterMs: 24 * 3_600_000, withDiscount: true  },
   { stage: 3, afterMs: 72 * 3_600_000, withDiscount: true  },
-];
+] as const;
 
 const BATCH_LIMIT = 100;
 
