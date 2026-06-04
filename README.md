@@ -132,7 +132,6 @@ goes via `/auth/reset`. First sign-in auto-creates a `profiles` row via the
 
 - **Stripe live keys** — test keys live; swap to `sk_live_*` when ready (5-min job)
 - **Resend domain verification** — API key wired; `theasofe.com` registered. Add 3 DNS records at the registrar, then call `/domains/verify`. Until verified, only the account-holder email receives mail.
-- **Custom domain DNS** — `www.theasofe.com` + apex added to Vercel; awaiting 2 GoDaddy DNS records
 - **Sentry DSN** — instrumentation present; just needs `NEXT_PUBLIC_SENTRY_DSN`
 - **Log drains** — needs Vercel Pro plan
 - **UK courier integration** — Royal Mail Click & Drop / DPD decision pending
@@ -140,13 +139,15 @@ goes via `/auth/reset`. First sign-in auto-creates a `profiles` row via the
 
 ## Deploys
 
-Always preview first:
+The project is connected to GitHub (`abiolaakinwale-cloud/TheAsofe`) and auto-deploys via the Vercel GitHub App:
+
+- Push to `main` → production deploy (theasofe.com)
+- Push to any other branch → preview deploy with a unique URL
+
+Manual CLI deploys still work as a fallback:
 ```bash
-vercel
-```
-Then promote:
-```bash
-vercel --prod
+vercel          # preview
+vercel --prod   # production
 ```
 
 ## Notes
