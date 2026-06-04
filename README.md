@@ -132,7 +132,6 @@ goes via `/auth/reset`. First sign-in auto-creates a `profiles` row via the
 
 - **Stripe live keys** — test keys live; swap to `sk_live_*` when ready (5-min job)
 - **Resend domain verification** — API key wired; `theasofe.com` registered. Add 3 DNS records at the registrar, then call `/domains/verify`. Until verified, only the account-holder email receives mail.
-- **Sentry DSN** — instrumentation present; just needs `NEXT_PUBLIC_SENTRY_DSN`
 - **Log drains** — needs Vercel Pro plan
 - **UK courier integration** — Royal Mail Click & Drop / DPD decision pending
 - **Demo wiring** — Strip `app/signin/demo-actions.ts`, `demoRole` props × 3, and demo scripts before public launch
