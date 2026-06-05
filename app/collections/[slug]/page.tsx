@@ -7,6 +7,7 @@ import { getJournalPost } from "@/lib/cms";
 import { getBrands, getProducts } from "@/lib/queries";
 import { getWishlistSlugs } from "@/lib/wishlist";
 import ProductCard from "@/components/ProductCard";
+import { commerceEnabled } from "@/lib/launch-mode";
 
 export async function generateStaticParams() {
   return listCollections().map(c => ({ slug: c.slug }));
@@ -34,6 +35,7 @@ export default async function CollectionPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  if (!commerceEnabled()) notFound();
   const { slug } = await params;
   const collection = getCollection(slug);
   if (!collection) notFound();

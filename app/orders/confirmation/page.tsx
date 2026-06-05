@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { commerceEnabled } from "@/lib/launch-mode";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { clearBag } from "@/app/bag/actions";
@@ -23,6 +24,7 @@ export default async function ConfirmationPage({
 }: {
   searchParams: Promise<{ session_id?: string }>;
 }) {
+  if (!commerceEnabled()) notFound();
   const { session_id } = await searchParams;
   if (!session_id || !isStripeConfigured()) redirect("/");
 

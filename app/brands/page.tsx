@@ -1,14 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getBrands, getProducts } from "@/lib/queries";
+import { commerceEnabled } from "@/lib/launch-mode";
 
 export const metadata: Metadata = {
   title: "The Designers",
-  description: "Eight independent houses curated by Asofe.",
+  description: "Independent houses curated by Asofe.",
 };
 
 export default async function BrandsPage() {
+  if (!commerceEnabled()) notFound();
   const [brands, products] = await Promise.all([getBrands(), getProducts()]);
   const productsByBrand = (slug: string) => products.filter(p => p.brand === slug);
   return (

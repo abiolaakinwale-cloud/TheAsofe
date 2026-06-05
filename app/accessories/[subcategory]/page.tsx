@@ -9,6 +9,7 @@ import { applyFilters, computeFacetCounts, parseFilters } from "@/lib/filters";
 import { paginate } from "@/lib/pagination";
 import { findSubcategory, getSubcategories } from "@/lib/subcategories";
 import { getWishlistSlugs } from "@/lib/wishlist";
+import { commerceEnabled } from "@/lib/launch-mode";
 
 export async function generateStaticParams() {
   return getSubcategories("accessories").map(s => ({ subcategory: s.slug }));
@@ -35,6 +36,7 @@ export default async function AccessoriesSubcategoryPage({
   params: Promise<{ subcategory: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!commerceEnabled()) notFound();
   const [{ subcategory }, sp] = await Promise.all([params, searchParams]);
   const sub = findSubcategory("accessories", subcategory);
   if (!sub) notFound();

@@ -18,10 +18,12 @@ export default function Navigation({
   categories,
   bagCount,
   signedIn,
+  commerce,
 }: {
   categories: Category[];
   bagCount: number;
   signedIn: boolean;
+  commerce: boolean;
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -45,7 +47,7 @@ export default function Navigation({
   const ACCESSORY_SLUGS = new Set(["jewellery"]);
   const headerCategories = categories.filter(c => !ACCESSORY_SLUGS.has(c.slug));
 
-  const primaryLinks: PrimaryLink[] = [
+  const commerceLinks: PrimaryLink[] = [
     ...headerCategories.map(c => ({
       href: `/${c.slug}`,
       label: c.name,
@@ -55,8 +57,16 @@ export default function Navigation({
     { href: "/collections",  label: "Collections" },
     { href: "/brands",       label: "Designers" },
     { href: "/new-arrivals", label: "New Arrivals" },
-    { href: "/editorial",    label: "The Journal" },
   ];
+
+  const primaryLinks: PrimaryLink[] = commerce
+    ? [...commerceLinks, { href: "/editorial", label: "The Journal" }]
+    : [
+        { href: "/philosophy", label: "Our Mission" },
+        { href: "/editorial",  label: "The Journal" },
+        { href: "/sellers",    label: "Sell on Asofe", accent: true },
+        { href: "/contact",    label: "Contact" },
+      ];
 
   // Close dropdown on outside click or Escape
   useEffect(() => {
@@ -82,10 +92,10 @@ export default function Navigation({
       <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
         {/* Row 1 — thin utility strip (desktop only) */}
         <div className="hidden lg:flex items-center justify-between h-8 text-[10px] tracking-[0.18em] uppercase" style={{ color: "var(--color-muted)" }}>
-          <p>Complimentary shipping on first orders</p>
+          <p>{commerce ? "Complimentary shipping on first orders" : "Opening soon · Founding designer applications open"}</p>
           <div className="flex items-center gap-6">
             <Link href={accountHref} className="lux-link">{accountLabel}</Link>
-            <Link href="/stockists" className="lux-link">Stockists</Link>
+            {commerce && <Link href="/stockists" className="lux-link">Stockists</Link>}
             <span>GBP £</span>
           </div>
         </div>
@@ -113,12 +123,20 @@ export default function Navigation({
           </Link>
 
           <div className="flex items-center justify-end gap-5 lg:gap-7 text-[11px] tracking-[0.14em] uppercase font-medium" style={{ color: "var(--color-ink)" }}>
-            <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="hidden sm:inline lux-link uppercase tracking-[0.14em]">
-              SEARCH
-            </button>
-            <Link href="/bag" aria-label="Bag" className="lux-link">
-              Bag <span style={{ color: "var(--color-muted)" }}>({bagCount})</span>
-            </Link>
+            {commerce ? (
+              <>
+                <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="hidden sm:inline lux-link uppercase tracking-[0.14em]">
+                  SEARCH
+                </button>
+                <Link href="/bag" aria-label="Bag" className="lux-link">
+                  Bag <span style={{ color: "var(--color-muted)" }}>({bagCount})</span>
+                </Link>
+              </>
+            ) : (
+              <Link href="/sellers" className="lux-link">
+                Apply
+              </Link>
+            )}
           </div>
         </div>
 
@@ -222,17 +240,23 @@ export default function Navigation({
               );
             })}
             <hr className="my-3" style={{ borderColor: "var(--color-rule)" }} />
-            <button type="button" onClick={() => { setMenuOpen(false); setSearchOpen(true); }} className="text-left py-2 tracking-[0.1em] uppercase font-medium">
-              SEARCH
-            </button>
+            {commerce && (
+              <button type="button" onClick={() => { setMenuOpen(false); setSearchOpen(true); }} className="text-left py-2 tracking-[0.1em] uppercase font-medium">
+                SEARCH
+              </button>
+            )}
             <Link href={accountHref} onClick={() => setMenuOpen(false)} className="py-2">{accountLabel}</Link>
-            <Link href="/stockists"  onClick={() => setMenuOpen(false)} className="py-2">Stockists</Link>
-            <Link href="/bag"        onClick={() => setMenuOpen(false)} className="py-2">Bag ({bagCount})</Link>
+            {commerce && (
+              <>
+                <Link href="/stockists" onClick={() => setMenuOpen(false)} className="py-2">Stockists</Link>
+                <Link href="/bag"       onClick={() => setMenuOpen(false)} className="py-2">Bag ({bagCount})</Link>
+              </>
+            )}
           </nav>
         </div>
       )}
 
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      {commerce && <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />}
     </header>
   );
 }

@@ -10,6 +10,7 @@ import PostHogProvider from "@/components/PostHogProvider";
 import WelcomeOfferModal from "@/components/WelcomeOfferModal";
 import { getCategories } from "@/lib/queries";
 import { bagCount } from "@/lib/bag";
+import { commerceEnabled } from "@/lib/launch-mode";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, DEFAULT_OG_IMAGE } from "@/lib/site";
 import "./globals.css";
@@ -83,9 +84,10 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const sb = await getServerSupabase();
+  const commerce = commerceEnabled();
   const [categories, bag, userRes] = await Promise.all([
-    getCategories(),
-    bagCount(),
+    commerce ? getCategories() : Promise.resolve([]),
+    commerce ? bagCount() : Promise.resolve(0),
     sb.auth.getUser(),
   ]);
   const user = userRes.data.user;
@@ -98,11 +100,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-full flex flex-col">
         <Suspense fallback={null}>
           <PostHogProvider userId={user?.id ?? null} email={user?.email ?? null}>
-            <ReferralBanner />
-            <Navigation categories={categories} bagCount={bag} signedIn={signedIn} />
+            {commerce && <ReferralBanner />}
+            <Navigation categories={categories} bagCount={bag} signedIn={signedIn} commerce={commerce} />
             <main className="flex-1">{children}</main>
-            {!signedIn && <WelcomeOfferModal />}
-            <Footer />
+            {commerce && !signedIn && <WelcomeOfferModal />}
+            <Footer commerce={commerce} />
           </PostHogProvider>
         </Suspense>
         <Analytics />

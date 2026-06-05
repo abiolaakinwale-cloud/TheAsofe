@@ -127,6 +127,7 @@ export async function getProducts(): Promise<Product[]> {
     .select(
       "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
+    .eq("published", true)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(toProduct);
@@ -162,6 +163,7 @@ export async function getProduct(slug: string): Promise<Product | null> {
       "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("slug", slug)
+    .eq("published", true)
     .maybeSingle();
   if (error) throw error;
   return data ? toProduct(data) : null;
@@ -175,6 +177,7 @@ export async function getProductsByCategory(slug: string): Promise<Product[]> {
       "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("category", slug)
+    .eq("published", true)
     .order("name");
   if (error) throw error;
   return (data ?? []).map(toProduct);
@@ -189,6 +192,7 @@ export async function getProductsByCategories(slugs: string[]): Promise<Product[
       "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .in("category", slugs)
+    .eq("published", true)
     .order("name");
   if (error) throw error;
   return (data ?? []).map(toProduct);
@@ -206,6 +210,7 @@ export async function getProductsBySubcategories(subSlugs: string[]): Promise<Pr
       "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .not("subcategory", "is", null)
+    .eq("published", true)
     .order("name");
   if (error) throw error;
   const normalise = (v: string | null | undefined) =>
@@ -222,6 +227,7 @@ export async function getProductsByBrand(slug: string): Promise<Product[]> {
       "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("brand", slug)
+    .eq("published", true)
     .order("name");
   if (error) throw error;
   return (data ?? []).map(toProduct);
@@ -235,6 +241,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
       "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("featured", true)
+    .eq("published", true)
     .order("name");
   if (error) throw error;
   return (data ?? []).map(toProduct);
@@ -255,6 +262,7 @@ export async function searchCatalog(qRaw: string): Promise<{ products: Product[]
         "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
       )
       .or(`name.ilike.${pattern},description.ilike.${pattern},colour.ilike.${pattern}`)
+      .eq("published", true)
       .limit(40),
     sb.from("brands")
       .select("slug, name, tagline, founded, origin, story, hero_image")
@@ -279,6 +287,7 @@ export async function getNewArrivals(): Promise<Product[]> {
       "slug, name, brand, seller, category, subcategory, price, currency, description, composition, made_in, sizes, colour, images, new_arrival, featured, made_to_order, lead_time_weeks, colours"
     )
     .eq("new_arrival", true)
+    .eq("published", true)
     .order("name");
   if (error) throw error;
   return (data ?? []).map(toProduct);

@@ -19,6 +19,7 @@ import { getProductReviews, getProductAggregate } from "@/lib/reviews";
 import { getProductQuestions } from "@/lib/questions";
 import AddToBag from "./_components/AddToBag";
 import { askDesigner } from "./_components/actions";
+import { commerceEnabled } from "@/lib/launch-mode";
 import ProductCard from "@/components/ProductCard";
 import Stars from "@/components/Stars";
 import RecentlyViewed from "@/components/RecentlyViewed";
@@ -67,6 +68,7 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ asked?: string; ask_error?: string }>;
 }) {
+  if (!commerceEnabled()) notFound();
   const { slug } = await params;
   const { asked, ask_error } = await searchParams;
   const product = await getProduct(slug);

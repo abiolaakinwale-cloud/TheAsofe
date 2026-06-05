@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getStripe, isStripeConfigured, toMinor } from "@/lib/stripe";
+import { commerceEnabled } from "@/lib/launch-mode";
 import { getEnrichedBag } from "@/lib/bag";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
@@ -14,6 +15,9 @@ import { track } from "@/lib/analytics";
 export type CheckoutError = { ok: false; error: string };
 
 export async function startCheckout(): Promise<CheckoutError | void> {
+  if (!commerceEnabled()) {
+    return { ok: false, error: "Checkout isn't open yet — we'll let you know when it is." };
+  }
   if (!isStripeConfigured()) {
     return { ok: false, error: "Checkout is being configured — please try again shortly." };
   }

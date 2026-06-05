@@ -1,7 +1,7 @@
 import Link from "next/link";
 import NewsletterForm from "@/components/NewsletterForm";
 
-const customerCare = [
+const customerCareCommerce = [
   { label: "Contact", href: "/contact" },
   { label: "Shipping & Delivery", href: "/shipping" },
   { label: "Returns", href: "/returns" },
@@ -12,11 +12,24 @@ const customerCare = [
   { label: "Gift Cards", href: "/gift-cards" },
 ];
 
-const company = [
+const customerCarePrelaunch = [
+  { label: "Contact", href: "/contact" },
+  { label: "Buyer Protection", href: "/buyer-protection" },
+];
+
+const companyCommerce = [
   { label: "Our Mission", href: "/philosophy" },
   { label: "The Journal", href: "/editorial" },
   { label: "Sell on Asofe", href: "/sellers" },
   { label: "Concierge", href: "/concierge" },
+  { label: "Press", href: "/press" },
+  { label: "Careers", href: "/careers" },
+];
+
+const companyPrelaunch = [
+  { label: "Our Mission", href: "/philosophy" },
+  { label: "The Journal", href: "/editorial" },
+  { label: "Sell on Asofe", href: "/sellers" },
   { label: "Press", href: "/press" },
   { label: "Careers", href: "/careers" },
 ];
@@ -33,7 +46,9 @@ const legal = [
   { label: "Cookie Preferences", href: "/cookies" },
 ];
 
-export default function Footer() {
+export default function Footer({ commerce = true }: { commerce?: boolean } = {}) {
+  const customerCare = commerce ? customerCareCommerce : customerCarePrelaunch;
+  const company = commerce ? companyCommerce : companyPrelaunch;
   return (
     <footer style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}>
       {/* Newsletter band */}

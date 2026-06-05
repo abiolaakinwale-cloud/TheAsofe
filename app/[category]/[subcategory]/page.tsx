@@ -15,6 +15,7 @@ import { applyFilters, computeFacetCounts, parseFilters } from "@/lib/filters";
 import { paginate } from "@/lib/pagination";
 import { findSubcategory, SUBCATEGORIES } from "@/lib/subcategories";
 import { getWishlistSlugs } from "@/lib/wishlist";
+import { commerceEnabled } from "@/lib/launch-mode";
 
 export async function generateStaticParams() {
   return Object.entries(SUBCATEGORIES).flatMap(([category, subs]) =>
@@ -44,6 +45,7 @@ export default async function SubcategoryPage({
   params: Promise<{ category: string; subcategory: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!commerceEnabled()) notFound();
   const [{ category, subcategory }, sp] = await Promise.all([params, searchParams]);
   if (HIDDEN_CATEGORY_SLUGS.has(category)) notFound();
   const sub = findSubcategory(category, subcategory);

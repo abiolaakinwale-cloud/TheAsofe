@@ -1,7 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { searchCatalog, getBrands } from "@/lib/queries";
+import { commerceEnabled } from "@/lib/launch-mode";
 import { getWishlistSlugs } from "@/lib/wishlist";
 import ProductCard from "@/components/ProductCard";
 
@@ -15,6 +17,7 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  if (!commerceEnabled()) notFound();
   const { q = "" } = await searchParams;
   const query = q.trim();
 

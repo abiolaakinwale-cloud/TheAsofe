@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getBrands } from "@/lib/queries";
 import { formatPrice } from "@/lib/account";
+import { commerceEnabled } from "@/lib/launch-mode";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 }
 
 export default async function PublicWishlistPage({ params }: { params: Promise<{ token: string }> }) {
+  if (!commerceEnabled()) notFound();
   const { token } = await params;
 
   // Look up by token via service-role (anon RLS denies, by design).

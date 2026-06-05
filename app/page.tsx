@@ -2,16 +2,9 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  getBrands,
-  getCategories,
-  getFeaturedProducts,
-} from "@/lib/queries";
 import { getSiteSettings, getPublishedJournalPosts } from "@/lib/cms";
-import { getWishlistSlugs } from "@/lib/wishlist";
-import ProductCard from "@/components/ProductCard";
+import NewsletterForm from "@/components/NewsletterForm";
 import Reveal, { Stagger, StaggerItem } from "./sellers/_components/Reveal";
-import RecentlyViewed from "@/components/RecentlyViewed";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -35,21 +28,12 @@ const websiteSchema = {
   "@type": "WebSite",
   name: SITE_NAME,
   url: SITE_URL,
-  potentialAction: {
-    "@type": "SearchAction",
-    target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/search?q={search_term_string}` },
-    "query-input": "required name=search_term_string",
-  },
 };
 
 export default async function HomePage() {
-  const [brands, categories, featured, settings, journalPosts, wishlistSlugs] = await Promise.all([
-    getBrands(),
-    getCategories(),
-    getFeaturedProducts(),
+  const [settings, journalPosts] = await Promise.all([
     getSiteSettings(),
     getPublishedJournalPosts(),
-    getWishlistSlugs(),
   ]);
 
   return (
@@ -57,27 +41,12 @@ export default async function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
       <Hero settings={settings} />
-      <StatsStrip />
-      <ShopByCategory categories={categories} />
       <Mission />
-      {featured.length > 0 && (
-        <FeaturedEdit
-          products={featured.slice(0, 4)}
-          brandsBySlug={new Map(brands.map(b => [b.slug, b]))}
-          wishlistSlugs={wishlistSlugs}
-        />
-      )}
-      {settings.spotlight.enabled && (() => {
-        const spot = brands.find(b => b.slug === settings.spotlight.brandSlug);
-        return spot ? <DesignerSpotlightBand brand={spot} settings={settings} /> : null;
-      })()}
-      <FeaturedDesigners brands={brands} />
+      <WhatWereBuilding />
       <SellerBand image={settings.images.sellersBand} />
-      <ShopWithConfidence />
-      <LovedByCommunity />
+      <Waitlist />
       <FromTheJournal posts={journalPosts.slice(0, 3)} />
-      <RecentlyViewed />
-      <GlobalHomeCta />
+      <OpeningSoon />
     </>
   );
 }
@@ -85,11 +54,10 @@ export default async function HomePage() {
 // ─── Hero ────────────────────────────────────────────────────────────────────
 
 const TRUST_BADGES = [
-  "UK Fulfilled",
-  "Fast UK Delivery",
-  "UK Returns",
-  "Secure Payments",
+  "UK Fulfilment",
   "Verified Designers",
+  "GBP Checkout",
+  "UK Returns",
 ];
 
 function Hero({ settings }: { settings: Awaited<ReturnType<typeof getSiteSettings>> }) {
@@ -99,7 +67,7 @@ function Hero({ settings }: { settings: Awaited<ReturnType<typeof getSiteSetting
         <div className="lg:col-span-6 order-2 lg:order-1">
           <Reveal>
             <p className="eyebrow mb-8" style={{ color: "var(--color-oxblood)" }}>
-              Volume One · Spring 2026
+              {settings.hero.eyebrow}
             </p>
           </Reveal>
           <Reveal delay={0.05}>
@@ -154,10 +122,9 @@ function Hero({ settings }: { settings: Awaited<ReturnType<typeof getSiteSetting
                 className="object-cover"
               />
             </div>
-            {/* Floating verified badge — desktop only, lower-right of the image */}
             <div className="hidden lg:flex absolute bottom-6 right-6 items-center gap-3 px-5 py-3 text-[10px] tracking-[0.22em] uppercase font-medium backdrop-blur" style={{ backgroundColor: "rgba(26,24,21,0.78)", color: "var(--color-ground)" }}>
               <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "var(--color-emerald)" }} />
-              UK Fulfilled · Verified Designers
+              Opening Soon · Founding Season
             </div>
           </Reveal>
         </div>
@@ -166,85 +133,7 @@ function Hero({ settings }: { settings: Awaited<ReturnType<typeof getSiteSetting
   );
 }
 
-// ─── Stats strip ─────────────────────────────────────────────────────────────
-
-// Pre-launch posture: numerical claims have been replaced with honest qualitative
-// statements until we can defend each metric with real data. Re-introduce
-// numbers once they're true.
-const stats: { stat: string; label: string }[] = [
-  { stat: "UK fulfilled",       label: "Designer-direct, dispatched from London" },
-  { stat: "Founding designers", label: "First houses now being onboarded" },
-  { stat: "Authentic",          label: "Every piece sourced from its atelier" },
-  { stat: "7 d returns",        label: "Complimentary returns window" },
-];
-
-function StatsStrip() {
-  return (
-    <section className="border-y" style={{ backgroundColor: "var(--color-cream)", borderColor: "var(--color-rule)" }}>
-      <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-10 lg:py-12">
-        <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-8">
-          {stats.map(s => (
-            <StaggerItem key={s.label}>
-              <p className="display text-[clamp(2rem,3vw,2.8rem)] leading-none mb-3" style={{ color: "var(--color-ink)" }}>
-                {s.stat}
-              </p>
-              <p className="text-[11px] tracking-[0.18em] uppercase font-medium leading-snug max-w-[26ch]" style={{ color: "var(--color-ink-soft)" }}>
-                {s.label}
-              </p>
-            </StaggerItem>
-          ))}
-        </Stagger>
-      </div>
-    </section>
-  );
-}
-
-// ─── Shop by category ────────────────────────────────────────────────────────
-
-function ShopByCategory({ categories }: { categories: Awaited<ReturnType<typeof getCategories>> }) {
-  return (
-    <section className="py-20 lg:py-28">
-      <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
-        <Reveal>
-          <div className="flex items-end justify-between flex-wrap gap-6 mb-12 lg:mb-16">
-            <div>
-              <p className="eyebrow mb-3" style={{ color: "var(--color-oxblood)" }}>Shop by category</p>
-              <h2 className="display text-[clamp(1.8rem,3.4vw,3rem)]" style={{ color: "var(--color-ink)" }}>
-                Six departments. One curated house.
-              </h2>
-            </div>
-            <Link href="/brands" className="text-[12px] tracking-[0.22em] uppercase font-medium lux-link" style={{ color: "var(--color-ink)" }}>
-              View all designers →
-            </Link>
-          </div>
-        </Reveal>
-
-        <Stagger className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6">
-          {categories.map(c => (
-            <StaggerItem key={c.slug}>
-              <Link href={`/${c.slug}`} className="group block">
-                <div className="relative aspect-[3/4] mb-4 overflow-hidden" style={{ backgroundColor: "var(--color-cream)" }}>
-                  <Image
-                    src={c.heroImage}
-                    alt={c.name}
-                    fill
-                    sizes="(max-width: 1024px) 50vw, 16vw"
-                    className="object-cover product-image"
-                  />
-                </div>
-                <p className="text-[11px] tracking-[0.18em] uppercase font-medium text-center" style={{ color: "var(--color-ink)" }}>
-                  {c.name}
-                </p>
-              </Link>
-            </StaggerItem>
-          ))}
-        </Stagger>
-      </div>
-    </section>
-  );
-}
-
-// ─── Our Mission — emotional brand storytelling ─────────────────────────────
+// ─── Mission ─────────────────────────────────────────────────────────────────
 
 function Mission() {
   return (
@@ -256,7 +145,7 @@ function Mission() {
           </Reveal>
           <Reveal delay={0.05}>
             <h2 className="display text-[clamp(2rem,4.2vw,4rem)] leading-[1.04] tracking-[-0.01em] max-w-[16ch]" style={{ color: "var(--color-ink)" }}>
-              Connecting African creativity with global customers.
+              Connecting African creativity with the world.
             </h2>
           </Reveal>
         </div>
@@ -264,22 +153,22 @@ function Mission() {
           <Stagger className="space-y-7 text-base lg:text-lg leading-relaxed" style={{ color: "var(--color-ink-soft)" }}>
             <StaggerItem>
               <p>
-                African designers make some of the most considered clothing in the world. Until now, getting it to a wardrobe
-                in London, Paris, or Toronto has meant weeks of waiting, customs paperwork, and a leap of faith on returns.
+                African designers make some of the most considered clothing in the world. Until now, the route from a
+                Lagos atelier to a London wardrobe has meant weeks of waiting, customs paperwork, and a leap of faith
+                on returns.
               </p>
             </StaggerItem>
             <StaggerItem>
               <p>
-                Asofe is the infrastructure that closes that gap. We hold stock for our designers in London, fulfil in
-                two to four days, and handle returns locally — so a piece from a Lagos atelier arrives like it was always
-                meant to.
+                Asofe is the infrastructure that closes that gap — UK stockholding, UK returns, GBP checkout, verified
+                designers. Pieces designed in Africa, fulfilled locally, sold at prices that reflect the maker, not the
+                markup.
               </p>
             </StaggerItem>
             <StaggerItem>
               <p>
-                For our designers, that means a real export channel without flying every order across an ocean. For our
-                customers, it means the clothes you grew up around — done with the precision of a luxury house, delivered
-                with the speed of one.
+                We&apos;re onboarding our founding cohort now. If you make, sell, or want to wear African fashion in the
+                UK — we&apos;d like to hear from you.
               </p>
             </StaggerItem>
             <StaggerItem>
@@ -289,7 +178,7 @@ function Mission() {
                   className="text-[12px] tracking-[0.22em] uppercase font-medium lux-link"
                   style={{ color: "var(--color-ink)" }}
                 >
-                  Read about the platform →
+                  Apply as a founding designer →
                 </Link>
               </div>
             </StaggerItem>
@@ -300,29 +189,29 @@ function Mission() {
   );
 }
 
-// ─── Shop With Confidence — buyer-protection block ──────────────────────────
+// ─── What we're building ────────────────────────────────────────────────────
 
-const confidencePoints: { title: string; body: string; icon: ReactNode }[] = [
-  { title: "UK fulfilment",         body: "Pieces are dispatched from our London hub — no cross-border surprises, no customs bills on the doorstep.", icon: <IconTruck /> },
-  { title: "UK returns address",    body: "7 days to return, handled locally. Refunds typically clear within ten working days of arrival.",          icon: <IconReturn /> },
-  { title: "Verified designers",    body: "Every house on the floor is vetted by our team. Provenance is documented; counterfeits don't make it in.", icon: <IconShield /> },
-  { title: "Secure GBP checkout",   body: "Pay in pounds with cards, Apple Pay, or Google Pay. Payment infrastructure handled by Stripe.",            icon: <IconCard /> },
+const buildingPoints: { title: string; body: string; icon: ReactNode }[] = [
+  { title: "UK fulfilment",       body: "Stockholding from a London hub once designers list — no cross-border surprises, no customs bills on the doorstep.", icon: <IconTruck /> },
+  { title: "UK returns",          body: "A UK returns address, handled locally. Refunds processed once the return is received and inspected.", icon: <IconReturn /> },
+  { title: "Verified designers",  body: "Every house on the floor will be vetted by our team. Provenance is documented; counterfeits don't make it in.", icon: <IconShield /> },
+  { title: "Secure GBP checkout", body: "Pay in pounds with cards, Apple Pay, or Google Pay. Payment infrastructure handled by Stripe.", icon: <IconCard /> },
 ];
 
-function ShopWithConfidence() {
+function WhatWereBuilding() {
   return (
     <section className="py-24 lg:py-32" style={{ backgroundColor: "var(--color-ground)" }}>
       <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
         <Reveal>
           <div className="text-center mb-16 lg:mb-20 max-w-[44ch] mx-auto">
-            <p className="eyebrow mb-4" style={{ color: "var(--color-emerald)" }}>Shop With Confidence</p>
+            <p className="eyebrow mb-4" style={{ color: "var(--color-emerald)" }}>What we&apos;re building</p>
             <h2 className="display text-[clamp(1.8rem,3.6vw,3rem)] leading-[1.06] tracking-[-0.01em]" style={{ color: "var(--color-ink)" }}>
-              Buying African fashion shouldn&apos;t be a leap of faith.
+              The infrastructure for African fashion to travel.
             </h2>
           </div>
         </Reveal>
         <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px max-w-[88rem] mx-auto" style={{ backgroundColor: "var(--color-rule)" }}>
-          {confidencePoints.map(p => (
+          {buildingPoints.map(p => (
             <StaggerItem
               key={p.title}
               className="p-8 lg:p-10"
@@ -340,23 +229,6 @@ function ShopWithConfidence() {
             </StaggerItem>
           ))}
         </Stagger>
-
-        {/* The promise */}
-        <Reveal>
-          <div className="mt-20 lg:mt-24 max-w-[68rem] mx-auto px-8 lg:px-16 py-12 lg:py-16 text-center" style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}>
-            <p className="eyebrow mb-5" style={{ color: "var(--color-saffron-soft)" }}>The Asofe Promise</p>
-            <p className="serif text-xl lg:text-2xl italic leading-relaxed max-w-[44ch] mx-auto mb-8">
-              &ldquo;If your order arrives damaged, incorrect, or significantly different from the listing, Asofe will make it right.&rdquo;
-            </p>
-            <Link
-              href="/returns"
-              className="inline-block text-[11px] tracking-[0.22em] uppercase font-medium pb-1 border-b"
-              style={{ borderColor: "var(--color-saffron-soft)", color: "var(--color-saffron-soft)" }}
-            >
-              Read the buyer protection policy →
-            </Link>
-          </div>
-        </Reveal>
       </div>
     </section>
   );
@@ -370,12 +242,13 @@ function SellerBand({ image }: { image: string }) {
       <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-24 lg:py-32 grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
         <div className="lg:col-span-6">
           <Reveal>
-            <p className="eyebrow mb-6" style={{ color: "var(--color-saffron-soft)" }}>For brands</p>
+            <p className="eyebrow mb-6" style={{ color: "var(--color-saffron-soft)" }}>For designers</p>
             <h2 className="display text-[clamp(2rem,4.4vw,4rem)] leading-[1.06] tracking-[-0.01em] mb-8 max-w-[18ch]">
               Built for African fashion brands ready to scale globally.
             </h2>
             <p className="text-base lg:text-lg leading-relaxed max-w-lg mb-10" style={{ color: "rgba(255,255,255,0.78)" }}>
-              UK fulfilment, returns handling, and access to diaspora shoppers — so your atelier can sell internationally without shipping every order from Lagos.
+              UK fulfilment, returns handling, and access to diaspora shoppers — so your atelier can sell internationally
+              without shipping every order from Lagos. We&apos;re selecting our founding cohort now.
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <Link
@@ -383,7 +256,7 @@ function SellerBand({ image }: { image: string }) {
                 className="inline-block px-8 py-4 text-[12px] tracking-[0.22em] uppercase font-medium transition-opacity hover:opacity-90"
                 style={{ backgroundColor: "var(--color-ground)", color: "var(--color-ink)" }}
               >
-                Apply as a brand
+                Apply as a founding designer
               </Link>
               <Link
                 href="/sellers#how-it-works"
@@ -413,198 +286,24 @@ function SellerBand({ image }: { image: string }) {
   );
 }
 
-// ─── Featured designers row ───────────────────────────────────────────────────
+// ─── Waitlist ───────────────────────────────────────────────────────────────
 
-function DesignerSpotlightBand({
-  brand,
-  settings,
-}: {
-  brand: Awaited<ReturnType<typeof getBrands>>[number];
-  settings: Awaited<ReturnType<typeof getSiteSettings>>;
-}) {
+function Waitlist() {
   return (
-    <section style={{ backgroundColor: "var(--color-ink)", color: "var(--color-ground)" }}>
-      <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-24 lg:py-32 grid lg:grid-cols-12 gap-10 lg:gap-16 items-stretch">
-        <div className="lg:col-span-7 relative aspect-[4/5] lg:aspect-[5/6] order-1">
-          <Reveal className="absolute inset-0">
-            <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: "var(--color-cream)" }}>
-              <Image
-                src={settings.spotlight.editorialImage}
-                alt={brand.name}
-                fill
-                sizes="(max-width: 1024px) 100vw, 60vw"
-                className="object-cover"
-              />
-            </div>
-          </Reveal>
-        </div>
-        <div className="lg:col-span-5 order-2 flex flex-col justify-center">
-          <Reveal>
-            <p className="eyebrow mb-6" style={{ color: "var(--color-saffron-soft)" }}>
-              {settings.spotlight.eyebrow}
-            </p>
-          </Reveal>
-          <Reveal delay={0.05}>
-            <h2 className="display text-[clamp(2.4rem,5vw,4.6rem)] leading-[1.04] tracking-[-0.01em] mb-6 max-w-[14ch]">
-              {brand.name}.
-            </h2>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <p className="serif italic text-xl lg:text-2xl mb-10 max-w-md" style={{ color: "rgba(255,255,255,0.78)" }}>
-              {brand.tagline}
-            </p>
-          </Reveal>
-          <Reveal delay={0.15}>
-            <div className="flex flex-wrap items-center gap-4">
-              <Link
-                href={`/brands/${brand.slug}/feature`}
-                className="inline-block px-9 py-4 text-[12px] tracking-[0.22em] uppercase font-medium"
-                style={{ backgroundColor: "var(--color-ground)", color: "var(--color-ink)" }}
-              >
-                Read the spotlight →
-              </Link>
-              <Link
-                href={`/brands/${brand.slug}`}
-                className="inline-flex items-center gap-3 text-[12px] tracking-[0.22em] uppercase font-medium pb-1 border-b"
-                style={{ borderColor: "var(--color-saffron-soft)", color: "var(--color-saffron-soft)" }}
-              >
-                Shop the collection →
-              </Link>
-            </div>
-          </Reveal>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FeaturedDesigners({ brands }: { brands: Awaited<ReturnType<typeof getBrands>> }) {
-  return (
-    <section className="py-20 lg:py-28">
-      <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
+    <section id="waitlist" className="py-24 lg:py-32" style={{ backgroundColor: "var(--color-blush)" }}>
+      <div className="max-w-[88rem] mx-auto px-6 lg:px-12 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
         <Reveal>
-          <div className="flex items-end justify-between flex-wrap gap-6 mb-12 lg:mb-16">
-            <div>
-              <p className="eyebrow mb-3" style={{ color: "var(--color-cobalt)" }}>Featured designers</p>
-              <h2 className="display text-[clamp(1.8rem,3.4vw,3rem)] max-w-[22ch]" style={{ color: "var(--color-ink)" }}>
-                Houses already on the floor.
-              </h2>
-            </div>
-            <Link href="/brands" className="text-[12px] tracking-[0.22em] uppercase font-medium lux-link" style={{ color: "var(--color-ink)" }}>
-              All designers →
-            </Link>
-          </div>
+          <p className="eyebrow mb-5" style={{ color: "var(--color-oxblood)" }}>Be first when we open</p>
+          <h2 className="display text-[clamp(2rem,4vw,3.6rem)] leading-[1.06] tracking-[-0.01em] max-w-[18ch] mb-6" style={{ color: "var(--color-ink)" }}>
+            Join the Asofe waitlist.
+          </h2>
+          <p className="text-base lg:text-lg leading-relaxed max-w-lg" style={{ color: "var(--color-ink-soft)" }}>
+            One quiet email when our founding designers go live, with first access to the floor. No catalogue spam.
+          </p>
         </Reveal>
-        <Stagger className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6">
-          {brands.slice(0, 6).map(b => (
-            <StaggerItem key={b.slug}>
-              <Link href={`/brands/${b.slug}`} className="group block text-center">
-                <div className="relative aspect-[4/5] mb-4 overflow-hidden" style={{ backgroundColor: "var(--color-cream)" }}>
-                  <Image
-                    src={b.heroImage}
-                    alt={b.name}
-                    fill
-                    sizes="(max-width: 1024px) 50vw, 16vw"
-                    className="object-cover product-image"
-                  />
-                </div>
-                <p className="serif text-base lg:text-lg" style={{ color: "var(--color-ink)" }}>{b.name}</p>
-                <p className="text-[10px] tracking-[0.18em] uppercase mt-1" style={{ color: "var(--color-muted)" }}>{b.origin}</p>
-              </Link>
-            </StaggerItem>
-          ))}
-        </Stagger>
-      </div>
-    </section>
-  );
-}
-
-// ─── Featured edit (small product grid) ─────────────────────────────────────
-
-function FeaturedEdit({
-  products,
-  brandsBySlug,
-  wishlistSlugs,
-}: {
-  products: Awaited<ReturnType<typeof getFeaturedProducts>>;
-  brandsBySlug: Map<string, Awaited<ReturnType<typeof getBrands>>[number]>;
-  wishlistSlugs: Set<string>;
-}) {
-  return (
-    <section className="py-20 lg:py-28 border-t" style={{ borderColor: "var(--color-rule)" }}>
-      <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
-        <Reveal>
-          <div className="flex items-end justify-between flex-wrap gap-6 mb-12 lg:mb-16">
-            <div>
-              <p className="eyebrow mb-3" style={{ color: "var(--color-oxblood)" }}>Chosen for the season</p>
-              <h2 className="display text-[clamp(1.8rem,3.4vw,3rem)]" style={{ color: "var(--color-ink)" }}>
-                A small edit.
-              </h2>
-            </div>
-            <Link href="/new-arrivals" className="text-[12px] tracking-[0.22em] uppercase font-medium lux-link" style={{ color: "var(--color-ink)" }}>
-              See all →
-            </Link>
-          </div>
+        <Reveal delay={0.1}>
+          <NewsletterForm />
         </Reveal>
-        <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 lg:gap-x-10 gap-y-14">
-          {products.map(p => (
-            <StaggerItem key={p.slug}>
-              <ProductCard
-                product={p}
-                brand={brandsBySlug.get(p.brand)}
-                inWishlist={wishlistSlugs.has(p.slug)}
-              />
-            </StaggerItem>
-          ))}
-        </Stagger>
-      </div>
-    </section>
-  );
-}
-
-// ─── Loved by community (testimonials) ──────────────────────────────────────
-
-const testimonials: { quote: string; attribution: string }[] = [
-  {
-    quote: "The aso oke coat from Atelier Adunni arrived in three days. It is the most beautifully made piece I own.",
-    attribution: "Tolu O. · London",
-  },
-  {
-    quote: "Asofe is the only place I can buy from these designers and receive in the UK without the customs headache.",
-    attribution: "Aminat K. · Manchester",
-  },
-  {
-    quote: "Returns were genuinely easy. The piece I kept is everything; the one I returned was refunded the same week.",
-    attribution: "Sandra A. · Birmingham",
-  },
-];
-
-function LovedByCommunity() {
-  return (
-    <section className="py-24 lg:py-32" style={{ backgroundColor: "var(--color-blush)" }}>
-      <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
-        <Reveal>
-          <div className="text-center mb-16 lg:mb-20">
-            <p className="eyebrow mb-3" style={{ color: "var(--color-oxblood)" }}>Loved by the community</p>
-            <h2 className="display text-[clamp(1.8rem,3.4vw,3rem)] max-w-[22ch] mx-auto" style={{ color: "var(--color-ink)" }}>
-              Notes from customers across the diaspora.
-            </h2>
-          </div>
-        </Reveal>
-        <Stagger className="grid md:grid-cols-3 gap-8 lg:gap-12">
-          {testimonials.map(t => (
-            <StaggerItem key={t.attribution} className="p-8 lg:p-10" >
-              <div style={{ boxShadow: "inset 0 0 0 1px var(--color-rule)", backgroundColor: "var(--color-ground)" }} className="p-8 lg:p-10 h-full">
-                <p className="serif text-xl lg:text-2xl italic leading-snug mb-8" style={{ color: "var(--color-ink)" }}>
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-                <p className="text-[11px] tracking-[0.18em] uppercase" style={{ color: "var(--color-muted)" }}>
-                  {t.attribution}
-                </p>
-              </div>
-            </StaggerItem>
-          ))}
-        </Stagger>
       </div>
     </section>
   );
@@ -657,40 +356,41 @@ function FromTheJournal({ posts }: { posts: Awaited<ReturnType<typeof getPublish
   );
 }
 
-// ─── Final "Global home" CTA ────────────────────────────────────────────────
+// ─── Opening soon CTA ───────────────────────────────────────────────────────
 
-function GlobalHomeCta() {
+function OpeningSoon() {
   return (
     <section style={{ backgroundColor: "var(--color-oxblood)", color: "var(--color-ground)" }}>
       <div className="max-w-[100rem] mx-auto px-6 lg:px-12 py-28 lg:py-40 text-center">
         <Reveal>
-          <p className="eyebrow mb-8" style={{ color: "var(--color-saffron-soft)" }}>The Global Home</p>
+          <p className="eyebrow mb-8" style={{ color: "var(--color-saffron-soft)" }}>Opening Soon</p>
         </Reveal>
         <Reveal delay={0.05}>
           <h2 className="display text-[clamp(2.4rem,5vw,5rem)] leading-[1.04] tracking-[-0.01em] max-w-[20ch] mx-auto mb-10">
-            The global home for African fashion.
+            Asofe is opening soon.
           </h2>
         </Reveal>
         <Reveal delay={0.1}>
           <p className="text-base lg:text-lg leading-relaxed max-w-xl mx-auto mb-12" style={{ color: "rgba(255,255,255,0.78)" }}>
-            One curated marketplace, eight independent designers, fulfilled from London — and growing.
+            A founding cohort of independent African designers, fulfilled from London. Apply to join, or be first when
+            the doors open.
           </p>
         </Reveal>
         <Reveal delay={0.15}>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link
-              href="/brands"
+              href="/sellers"
               className="inline-block px-10 py-4 text-[12px] tracking-[0.22em] uppercase font-medium transition-opacity hover:opacity-90"
               style={{ backgroundColor: "var(--color-ground)", color: "var(--color-ink)" }}
             >
-              Start browsing
+              Apply as a designer
             </Link>
             <Link
-              href="/sellers"
+              href="#waitlist"
               className="inline-flex items-center gap-3 text-[12px] tracking-[0.22em] uppercase font-medium pb-1 border-b"
               style={{ borderColor: "var(--color-saffron-soft)", color: "var(--color-saffron-soft)" }}
             >
-              Or apply as a brand →
+              Join the waitlist →
             </Link>
           </div>
         </Reveal>
@@ -701,14 +401,6 @@ function GlobalHomeCta() {
 
 // ─── Icons (inline) ─────────────────────────────────────────────────────────
 
-function IconAtelier() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 9l8-5 8 5v11H4z" />
-      <path d="M9 20v-6h6v6" />
-    </svg>
-  );
-}
 function IconTruck() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">

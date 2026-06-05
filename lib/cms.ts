@@ -50,32 +50,32 @@ export type SiteSettings = {
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   hero: {
-    eyebrow: "The Global Home for African Fashion",
-    title: "The Global Home for African Fashion.",
+    eyebrow: "Founding Season · 2026",
+    title: "Accessible luxury, made in Africa.",
     body:
-      "Premium African fashion with fast UK delivery and trusted diaspora fulfilment.",
+      "Asofe is the new home for independent African designers — curated craft, UK fulfilment, attainable prices. " +
+      "We're opening with a founding cohort of designers. Apply to join, or be first when the doors open.",
     image: "/asofe/hero-main.png",
-    primaryLabel: "Shop Collections",
-    primaryHref: "/brands",
-    secondaryLabel: "Sell on Asofe",
-    secondaryHref: "/sellers",
+    primaryLabel: "Apply as a founding designer",
+    primaryHref: "/sellers",
+    secondaryLabel: "Join the waitlist",
+    secondaryHref: "#waitlist",
   },
   journal: {
     eyebrow: "From the journal",
-    title: "Ankara, reimagined.",
+    title: "Notes from the workshops.",
     body:
-      "Bold prints, modern silhouettes. A closer look at how the season's independent designers are reinterpreting " +
-      "Ankara for the contemporary wardrobe.",
+      "Essays, atelier visits, and the slow craft behind the pieces we're curating for the Asofe floor.",
     image: "/asofe/journal-card.png",
-    label: "Read the essay",
+    label: "Read the journal",
     href: "/editorial",
   },
   concierge: {
     eyebrow: "The Concierge",
     title: "Personal advice, by appointment.",
     body:
-      "Our concierge is available by telephone, video, or in our Paris atelier. Tailoring, fitting, and styling " +
-      "for the considered wardrobe.",
+      "Once the floor opens, our London concierge will be available by telephone or video for tailoring, fitting, " +
+      "and styling advice on the considered wardrobe.",
     label: "Request an appointment",
     href: "/concierge",
   },

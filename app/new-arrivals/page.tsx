@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { commerceEnabled } from "@/lib/launch-mode";
 import { getBrands, getNewArrivals } from "@/lib/queries";
 import { getWishlistSlugs } from "@/lib/wishlist";
 import ProductCard from "@/components/ProductCard";
@@ -19,6 +21,7 @@ export default async function NewArrivalsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!commerceEnabled()) notFound();
   const [products, brands, sp, wishlistSlugs] = await Promise.all([
     getNewArrivals(),
     getBrands(),

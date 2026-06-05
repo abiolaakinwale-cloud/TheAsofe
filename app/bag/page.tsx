@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { commerceEnabled } from "@/lib/launch-mode";
 import { getEnrichedBag } from "@/lib/bag";
 import { formatPrice } from "@/lib/data";
 import { removeFromBag, updateBagQty, saveForLater } from "./actions";
@@ -40,6 +42,7 @@ export default async function BagPage({
 }: {
   searchParams: Promise<{ saved?: string; recover?: string; recovered?: string }>;
 }) {
+  if (!commerceEnabled()) notFound();
   const { saved, recover, recovered } = await searchParams;
 
   // Step 0: cart-recovery deep link from the abandoned-cart email.

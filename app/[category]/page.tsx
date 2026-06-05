@@ -17,6 +17,7 @@ import { applyFilters, computeFacetCounts, parseFilters } from "@/lib/filters";
 import { paginate } from "@/lib/pagination";
 import { getSubcategories } from "@/lib/subcategories";
 import { getWishlistSlugs } from "@/lib/wishlist";
+import { commerceEnabled } from "@/lib/launch-mode";
 
 export async function generateStaticParams() {
   const categories = await getCategories();
@@ -37,6 +38,7 @@ export default async function CategoryPage({
   params: Promise<{ category: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!commerceEnabled()) notFound();
   const [{ category }, sp] = await Promise.all([params, searchParams]);
   if (HIDDEN_CATEGORY_SLUGS.has(category)) notFound();
   const [c, inCategory, brands, wishlistSlugs] = await Promise.all([

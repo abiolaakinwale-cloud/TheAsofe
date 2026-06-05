@@ -11,6 +11,7 @@ import { getBrandAggregate } from "@/lib/reviews";
 import ProductCard from "@/components/ProductCard";
 import Pagination from "@/components/Pagination";
 import Stars from "@/components/Stars";
+import { commerceEnabled } from "@/lib/launch-mode";
 
 export async function generateStaticParams() {
   const brands = await getBrands();
@@ -62,6 +63,7 @@ export default async function BrandPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!commerceEnabled()) notFound();
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const [brand, items, brands, settings, wishlistSlugs, brandRating] = await Promise.all([
     getBrand(slug),

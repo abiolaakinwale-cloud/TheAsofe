@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { commerceEnabled } from "@/lib/launch-mode";
 import { getBrands, getProductsByCategories, getProductsBySubcategories } from "@/lib/queries";
 import ProductCard from "@/components/ProductCard";
 import FilterSidebar from "@/components/FilterSidebar";
@@ -22,6 +24,7 @@ export default async function AccessoriesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!commerceEnabled()) notFound();
   const subcategories = getSubcategories("accessories");
   const subSlugs = subcategories.map(s => s.slug);
 
