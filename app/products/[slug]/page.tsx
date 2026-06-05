@@ -20,6 +20,8 @@ import { getProductQuestions } from "@/lib/questions";
 import AddToBag from "./_components/AddToBag";
 import { askDesigner } from "./_components/actions";
 import { commerceEnabled } from "@/lib/launch-mode";
+
+export const dynamic = "force-dynamic";
 import ProductCard from "@/components/ProductCard";
 import Stars from "@/components/Stars";
 import RecentlyViewed from "@/components/RecentlyViewed";
