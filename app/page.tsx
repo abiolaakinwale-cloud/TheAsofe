@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { getSiteSettings, getPublishedJournalPosts } from "@/lib/cms";
+import { getCategories } from "@/lib/queries";
 import NewsletterForm from "@/components/NewsletterForm";
 import Reveal, { Stagger, StaggerItem } from "./sellers/_components/Reveal";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from "@/lib/site";
@@ -31,9 +32,10 @@ const websiteSchema = {
 };
 
 export default async function HomePage() {
-  const [settings, journalPosts] = await Promise.all([
+  const [settings, journalPosts, categories] = await Promise.all([
     getSiteSettings(),
     getPublishedJournalPosts(),
+    getCategories(),
   ]);
 
   return (
@@ -42,6 +44,7 @@ export default async function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
       <Hero settings={settings} />
       <Mission />
+      <ProposedDepartments categories={categories} />
       <WhatWereBuilding />
       <SellerBand image={settings.images.sellersBand} />
       <Waitlist />
@@ -184,6 +187,38 @@ function Mission() {
             </StaggerItem>
           </Stagger>
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Proposed departments ───────────────────────────────────────────────────
+
+function ProposedDepartments({ categories }: { categories: Awaited<ReturnType<typeof getCategories>> }) {
+  if (categories.length === 0) return null;
+  return (
+    <section className="py-24 lg:py-32 border-t" style={{ backgroundColor: "var(--color-ground)", borderColor: "var(--color-rule)" }}>
+      <div className="max-w-[88rem] mx-auto px-6 lg:px-12">
+        <Reveal>
+          <div className="text-center mb-12 lg:mb-16 max-w-[44ch] mx-auto">
+            <p className="eyebrow mb-4" style={{ color: "var(--color-oxblood)" }}>Departments at launch</p>
+            <h2 className="display text-[clamp(1.8rem,3.6vw,3rem)] leading-[1.06] tracking-[-0.01em]" style={{ color: "var(--color-ink)" }}>
+              What we&apos;ll be carrying.
+            </h2>
+          </div>
+        </Reveal>
+        <Stagger className="flex flex-wrap justify-center gap-3 lg:gap-4 max-w-[60rem] mx-auto">
+          {categories.map(c => (
+            <StaggerItem key={c.slug}>
+              <span
+                className="inline-block px-6 py-3 text-[12px] tracking-[0.22em] uppercase font-medium border"
+                style={{ borderColor: "var(--color-ink)", color: "var(--color-ink)" }}
+              >
+                {c.name}
+              </span>
+            </StaggerItem>
+          ))}
+        </Stagger>
       </div>
     </section>
   );
