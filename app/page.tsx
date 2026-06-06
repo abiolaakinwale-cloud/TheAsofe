@@ -58,6 +58,7 @@ export default async function HomePage() {
 
 const TRUST_BADGES = [
   "UK Fulfilment",
+  "10-Day UK Delivery",
   "Verified Designers",
   "GBP Checkout",
   "UK Returns",

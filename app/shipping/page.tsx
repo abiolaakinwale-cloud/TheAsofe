@@ -5,11 +5,11 @@ import Prose from "@/components/Prose";
 export const metadata: Metadata = { title: "Shipping & Delivery" };
 
 const regions = [
-  { region: "Nigeria & ECOWAS", time: "1 – 3 working days", cost: "Complimentary" },
-  { region: "United Kingdom & European Union", time: "3 – 5 working days", cost: "From £25 · DDP" },
-  { region: "United States & Canada", time: "4 – 7 working days", cost: "From £45 · DDP" },
-  { region: "Middle East & Asia", time: "5 – 8 working days", cost: "From £55 · DDP" },
-  { region: "Rest of world", time: "7 – 12 working days", cost: "Calculated at checkout" },
+  { region: "United Kingdom", time: "Within 10 working days", cost: "Royal Mail Tracked 48" },
+  { region: "Nigeria & ECOWAS", time: "Not yet available", cost: "—" },
+  { region: "European Union", time: "Not yet available", cost: "—" },
+  { region: "United States & Canada", time: "Not yet available", cost: "—" },
+  { region: "Rest of world", time: "Not yet available", cost: "—" },
 ];
 
 export default function ShippingPage() {
@@ -38,42 +38,14 @@ export default function ShippingPage() {
       </section>
 
       <Prose
-        lastUpdated="May 2026"
+        lastUpdated="June 2026"
         sections={[
           {
             heading: "From designer to door",
             body: <p>
-              Each piece is dispatched directly from its originating designer or from our Lagos atelier. We coordinate one
-              consolidated shipment per order; you will receive a single tracking link once the last item is in transit.
-            </p>,
-          },
-          {
-            heading: "Duties & taxes",
-            body: <p>
-              For destinations marked DDP (Delivered Duty Paid) all duties, import taxes, and customs handling are
-              calculated and settled at checkout. Nothing further is owed on receipt. For other destinations the carrier
-              will contact you to settle local charges before final delivery.
-            </p>,
-          },
-          {
-            heading: "Made-to-measure & pre-order",
-            body: <p>
-              Pieces produced after order carry a lead time stated on the product page. The shipping clock begins on the
-              date of dispatch, not the date of order. We will write to you when production is complete.
-            </p>,
-          },
-          {
-            heading: "Signature on delivery",
-            body: <p>
-              All orders require an adult signature. We are unable to leave packages with neighbours or in safe places.
-              If you will not be available, the carrier will hold the parcel for collection.
-            </p>,
-          },
-          {
-            heading: "Restricted materials",
-            body: <p>
-              A small number of pieces incorporate horn, raffia, or naturally-shed feathers. Where local import rules
-              restrict these materials we are unable to ship; the product page will note any such restrictions.
+              Each order ships through a UK-bound consolidator that departs twice weekly — Wednesday and Sunday. Designers
+              hand goods to our logistics partner within 24 hours of order; Royal Mail Tracked 48 covers the final mile.
+              You receive a single tracking link once the parcel is with Royal Mail.
             </p>,
           },
         ]}
