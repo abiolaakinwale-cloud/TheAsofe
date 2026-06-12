@@ -31,6 +31,17 @@ export async function startCheckout(): Promise<CheckoutError | void> {
   const sbAuth = await getServerSupabase();
   const { data: { user } } = await sbAuth.auth.getUser();
 
+  // Visitors must be approved before they can checkout.
+  if (user) {
+    const { data: profile } = await sbAuth.from("profiles").select("role, customer_status").eq("id", user.id).maybeSingle();
+    if (profile?.role === "visitor" && profile?.customer_status !== "approved") {
+      const error = profile?.customer_status === "rejected"
+        ? "Your account application was not approved. Please contact us at hello@theasofe.com."
+        : "Your account is pending approval. We'll be in touch shortly.";
+      return { ok: false, error };
+    }
+  }
+
   // Resolve any gift-card applied via the bag cookie. Recomputed here against
   // the bag's current state so a stale cookie can't over-redeem.
   const giftCard = await readAppliedGiftCard();

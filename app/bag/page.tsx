@@ -62,6 +62,14 @@ export default async function BagPage({
   const { data: { user } } = await sb.auth.getUser();
   const isGuest = !user;
 
+  let customerStatus: "approved" | "pending" | "rejected" | null = null;
+  if (user) {
+    const { data: profile } = await sb.from("profiles").select("role, customer_status").eq("id", user.id).maybeSingle();
+    if (profile?.role === "visitor") {
+      customerStatus = (profile.customer_status ?? "pending") as typeof customerStatus;
+    }
+  }
+
   const discountPounds = discount ? Math.floor(discount.discountPence / 100) : 0;
   const giftDiscountPounds = giftCard ? Math.floor(giftCard.applicable_pence / 100) : 0;
   const finalTotal = Math.max(0, bag.subtotal + shipping.charge - giftDiscountPounds - discountPounds);
@@ -213,10 +221,26 @@ export default async function BagPage({
                 <hr style={{ borderColor: "var(--color-rule)" }} />
                 <Row k="Total" v={formatPrice(finalTotal)} bold />
               </dl>
-              <div className="mt-8">
-                <ExpressCheckout amountPence={toMinor(finalTotal)} />
-              </div>
-              <CheckoutButton />
+              {customerStatus === "pending" && (
+                <div className="mt-8 p-4 text-sm leading-relaxed" style={{ backgroundColor: "var(--color-cream)", color: "var(--color-ink)" }}>
+                  <p className="font-medium mb-1" style={{ color: "var(--color-ink)" }}>Your account is awaiting approval.</p>
+                  <p style={{ color: "var(--color-muted)" }}>We review every new account before opening checkout. You'll hear from us shortly.</p>
+                </div>
+              )}
+              {customerStatus === "rejected" && (
+                <div className="mt-8 p-4 text-sm leading-relaxed" style={{ backgroundColor: "var(--color-cream)", color: "var(--color-oxblood)" }}>
+                  <p className="font-medium mb-1">Account not approved.</p>
+                  <p style={{ color: "var(--color-muted)" }}>Please contact us at <a href="mailto:hello@theasofe.com" className="lux-link" style={{ color: "var(--color-ink)" }}>hello@theasofe.com</a> if you think this is a mistake.</p>
+                </div>
+              )}
+              {customerStatus == null || customerStatus === "approved" ? (
+                <>
+                  <div className="mt-8">
+                    <ExpressCheckout amountPence={toMinor(finalTotal)} />
+                  </div>
+                  <CheckoutButton />
+                </>
+              ) : null}
 
               {/* Discount code panel */}
               <div className="mt-6 pt-6 border-t" style={{ borderColor: "var(--color-rule)" }}>

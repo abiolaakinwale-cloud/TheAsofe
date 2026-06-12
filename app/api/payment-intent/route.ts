@@ -33,6 +33,14 @@ export async function POST() {
   const sbAuth = await getServerSupabase();
   const { data: { user } } = await sbAuth.auth.getUser();
 
+  // Visitors must be approved before they can checkout.
+  if (user) {
+    const { data: profile } = await sbAuth.from("profiles").select("role, customer_status").eq("id", user.id).maybeSingle();
+    if (profile?.role === "visitor" && profile?.customer_status !== "approved") {
+      return NextResponse.json({ ok: false, error: "Account not approved" }, { status: 403 });
+    }
+  }
+
   const giftCard = await readAppliedGiftCard();
   const giftPence = giftCard?.applicable_pence ?? 0;
   const discount  = await readAppliedDiscount();
