@@ -69,7 +69,11 @@ for (const a of accounts) {
 
   // Upsert the profile row with the desired role + brand. The handle_new_user
   // trigger may have created a row already with role=visitor; we overwrite.
-  const profilePayload = { id: user.id, email: a.email, role: a.role, brand: a.brand };
+  // Demo customer is pre-approved so they can reach checkout without manual review.
+  const profilePayload = {
+    id: user.id, email: a.email, role: a.role, brand: a.brand,
+    customer_status: a.role === "visitor" ? "approved" : "pending",
+  };
   const { error: pErr } = await sb.from("profiles").upsert(profilePayload, { onConflict: "id" });
   if (pErr) {
     console.error(`  · profile update failed for ${a.email}:`, pErr.message);
