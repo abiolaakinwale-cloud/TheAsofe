@@ -1465,6 +1465,15 @@ as $$
    returning uses_count;
 $$;
 
+-- ─── Customer approval ────────────────────────────────────────────────────
+-- customer_status gates whether a visitor-role account is allowed to shop.
+-- 'pending'  = signed up, awaiting admin review
+-- 'approved' = cleared to browse and checkout
+-- 'rejected' = denied access (account stays but checkout is blocked)
+alter table public.profiles
+  add column if not exists customer_status text not null default 'pending'
+    check (customer_status in ('pending','approved','rejected'));
+
 -- Nightly refresh entrypoint for the co-purchase view. Wrapped so we don't
 -- have to grant raw REFRESH MATERIALIZED VIEW to the service role.
 create or replace function public.refresh_copurchases()
